@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="ko" data-page="module-4">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>모듈 4 · 프롬프트 평가(Eval)와 자동 채점 — AI 강의노트</title>
+<meta name="description" content="골든셋 만들기, LLM-as-judge 설계 7원칙, 서술형 루브릭 채점, 카파 일치도, 회귀 테스트, Batch API 대량 채점 — 신뢰할 수 있는 자동 채점 파이프라인.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem('ai-notes:theme');if(!t){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">본문으로</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menuBtn" aria-label="목차 열기" aria-expanded="false">☰</button>
+  <a class="brand" href="index.html">
+    <span class="brand-mark">AI</span>
+    <span>AI 강의노트<small>모몽가님 맞춤판</small></span>
+  </a>
+  <nav class="crumbs" aria-label="현재 위치"><a href="index.html" style="color:inherit;text-decoration:none">코스 홈</a> / <strong>모듈 4</strong></nav>
+  <div class="topbar-right">
+    <span class="progress-chip" data-progress-chip>0%</span>
+    <button class="icon-btn" id="themeBtn" aria-label="테마 전환">🌙</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="강의 목차">
+    <nav class="nav">
+      <a class="nav-item" href="index.html"><span class="nav-num">⌂</span>코스 홈</a>
+      <p class="nav-label">모듈</p>
+      <div class="nav-group">
+        <a class="nav-item" href="module-1.html"><span class="nav-num">1</span>프롬프트 설계 정석</a>
+        <div class="nav-sub"></div>
+      </div>
+      <div class="nav-group">
+        <a class="nav-item" href="module-2.html"><span class="nav-num">2</span>문서 전처리 &amp; 비전</a>
+        <div class="nav-sub"></div>
+      </div>
+      <div class="nav-group">
+        <a class="nav-item" href="module-3.html"><span class="nav-num">3</span>8,000문항 RAG</a>
+        <div class="nav-sub"></div>
+      </div>
+      <div class="nav-group">
+        <a class="nav-item active" href="module-4.html"><span class="nav-num">4</span>Eval &amp; 자동 채점</a>
+        <div class="nav-sub"></div>
+      </div>
+      <div class="nav-group">
+        <a class="nav-item" href="appendix.html"><span class="nav-num">+</span>부록 · 레포 로드맵</a>
+        <div class="nav-sub"></div>
+      </div>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="progress-label"><span>이 페이지 진도</span><span data-progress-text>0 / 0</span></div>
+      <div class="progress-track"><div class="progress-fill" data-progress-fill></div></div>
+      <button class="reset-link" data-reset-progress type="button">이 페이지 진도 초기화</button>
+    </div>
+  </aside>
+  <div class="backdrop" id="backdrop" hidden></div>
+
+  <main class="main" id="main">
+    <article class="doc">
+
+      <div class="doc-hero">
+        <span class="eyebrow">모듈 4 · 신뢰</span>
+        <h1>프롬프트 평가(Eval)와 자동 채점</h1>
+        <p class="lede">
+          “좋아진 것 같다”를 <strong>숫자와 근거</strong>로 바꾸는 모듈입니다. 골든셋을 만들고, judge를 설계하고,
+          사람 채점과 얼마나 맞는지 확인한 뒤, 8천 건을 안정적으로 돌립니다.
+        </p>
+        <div class="meta-row">
+          <span class="meta-pill">13레슨</span>
+          <span class="meta-pill">약 100분</span>
+          <span class="meta-pill">선행: 모듈 1</span>
+          <span class="meta-pill">근거: claude-cookbooks evals · courses</span>
+        </div>
+      </div>
+
+      <div class="callout danger">
+        <span class="callout-title">이 모듈의 한 문장</span>
+        <p>
+          <strong>평가 없이 프롬프트를 고치는 것은, 눈 감고 사진 보정하는 것과 같습니다.</strong>
+          감이 나쁘다는 게 아니라, <em>무엇이 좋아졌는지 말할 수 없다</em>는 게 문제입니다. 8천 문항 규모에서는
+          그 “말할 수 없음”이 곧 사고입니다.
+        </p>
+      </div>
+
+      <h2 id="m4-01">4.1 바이브 평가의 함정</h2>
+
+      <p>
+        프롬프트를 고치고 결과를 두세 개 읽어 보고 “더 좋아졌네”라고 넘어가는 것을 <em>바이브 평가</em>라 부릅니다.
+        세 가지 이유로 반드시 실패합니다.
+      </p>
+
+      <ol>
+        <li><strong>표본이 편향됩니다.</strong> 사람은 재미있는 사례·명백한 사례를 고릅니다. 어려운 경계 사례는 안 봅니다.</li>
+        <li><strong>기억이 흐려집니다.</strong> 어제 결과와 오늘 결과를 나란히 비교하지 않으면, 차이는 느낌으로만 남습니다.</li>
+        <li><strong>개선과 퇴보가 같이 옵니다.</strong> 환각을 줄이면 답이 짧아지고, 짧아지면 누락이 늘어납니다. 한쪽만 보면 속습니다.</li>
+      </ol>
+
+      <p>
+        실제로 자주 일어나는 일을 표로 보면 이렇습니다.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>변경</th><th>좋아진 것</th><th>나빠진 것(안 보임)</th></tr></thead>
+          <tbody>
+            <tr><td>“짧게 쓰라” 추가</td><td>읽기 편해짐</td><td>채점 근거 문장이 사라져 <strong>부분점수 판정 불가</strong></td></tr>
+            <tr><td>temperature 0</td><td>형식 안정</td><td>표현이 단조로워져 해설이 템플릿처럼 됨</td></tr>
+            <tr><td>k=3으로 축소</td><td>비용·지연 감소</td><td>recall 하락 — <strong>두 문서를 종합해야 하는 문항</strong>에서 실패</td></tr>
+            <tr><td>요약 인덱싱</td><td>긴 청크 검색 개선</td><td>용어가 바뀌어 특정 키워드 검색이 죽음</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        그래서 필요한 것은 딱 두 가지입니다. <strong>고정된 문제집</strong>(골든셋)과 <strong>같은 자로 재는 도구</strong>(채점기)입니다.
+        이 두 개만 있으면 프롬프트를 바꿀 때마다 30초 만에 “좋아졌는지” 알 수 있습니다.
+      </p>
+
+      <h2 id="m4-02">4.2 eval의 4요소와 데이터셋 만들기</h2>
+
+      <p>평가는 네 부분으로 이루어집니다. 이 구분이 명확해야 “어디가 문제인지” 말할 수 있습니다.</p>
+
+      <dl class="kv">
+        <dt>입력</dt>
+        <dd>모델에 들어가는 것. 문항 + 학생 응답 + 루브릭.</dd>
+        <dt>출력</dt>
+        <dd>모델이 낸 것. 우리 코드가 파싱한 구조까지 포함.</dd>
+        <dt>골든 정답</dt>
+        <dd>정답 자체일 수도 있고, “무엇을 보면 맞는지”에 대한 <em>설명</em>일 수도 있습니다. 채점에서는 후자가 더 유용합니다.</dd>
+        <dt>점수</dt>
+        <dd>코드·사람·모델이 매긴 값. 가능하면 <strong>이진 판정 + 근거</strong>가 좋습니다.</dd>
+      </dl>
+
+      <h3>골든셋은 이렇게 만듭니다</h3>
+      <ol class="steps">
+        <li><strong>실제 사례 20개를 모읍니다.</strong> 내가 직접 채점했던 응답, 검수를 통과한 문항, 실제로 틀렸던 사례. <em>손으로 만든 20개가 합성 200개보다 낫습니다.</em></li>
+        <li><strong>경계 사례를 일부러 넣습니다.</strong> “거의 맞지만 핵심어가 빠진 답”, “표현은 다른데 의미가 같은 답”, “교육과정에 없는 개념을 섞은 답”.</li>
+        <li><strong>합성으로 늘립니다.</strong> 아래 프롬프트로 변형을 만들되, <em>정답 라벨은 사람이 확인</em>합니다.</li>
+        <li><strong>버전을 붙입니다.</strong> <span class="path">evals/grade_v1.jsonl</span>. 문제집을 바꾸면 점수를 비교할 수 없으므로, 셋은 되도록 고정하고 <em>추가</em>만 합니다.</li>
+      </ol>
+
+<pre data-lang="text"><code>&lt;task&gt;
+아래 &lt;item&gt;과 &lt;rubric&gt;을 보고, 학생 응답 예시를 만들어라.
+각 예시는 채점 결과가 서로 다르게 나오도록, 다음 유형을 하나씩 포함하라.
+  1) 완전 정답
+  2) 핵심 요소 하나 누락
+  3) 표현은 다르지만 의미가 같은 정답
+  4) 교육과정에 없는 개념을 섞은 답
+  5) 문항이 묻지 않은 내용으로 분량을 채운 답
+&lt;/task&gt;
+
+&lt;output_format&gt;
+&lt;examples&gt; 안에 각각 &lt;example type="..."&gt;&lt;response&gt;…&lt;/response&gt;
+&lt;expected&gt;요소별 충족/미충족 예상&lt;/expected&gt;&lt;/example&gt;
+&lt;/output_format&gt;
+
+&lt;rules&gt;
+- 응답은 실제 학생이 쓸 법한 말투로 쓴다(교과서 문장 금지).
+- 각 응답은 3~6문장.
+- 정답을 그대로 베낀 응답은 만들지 않는다.
+&lt;/rules&gt;</code></pre>
+
+      <div class="callout warn">
+        <span class="callout-title">합성 데이터의 함정</span>
+        <p>
+          모델이 만든 응답은 <strong>모델이 좋아하는 모양</strong>입니다. 그래서 실제 학생 응답보다 채점이 쉽습니다.
+          합성 데이터로만 평가하면 점수가 실제보다 높게 나옵니다. 반드시 <em>실제 응답 최소 10개</em>를 섞으세요.
+          그리고 합성 데이터로 <strong>프롬프트를 튜닝하면</strong> 그 데이터에 과적합됩니다. 튜닝용과 검증용을 나누는 것이 원칙입니다.
+        </p>
+      </div>
+
+      <h2 id="m4-03">4.3 채점 3방식: 코드 · 사람 · 모델</h2>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>방식</th><th>속도</th><th>비용</th><th>정확도</th><th>적합한 작업</th></tr></thead>
+          <tbody>
+            <tr><td>코드 기반</td><td>즉시</td><td>0</td><td>규칙이 맞으면 100%</td><td>형식 검사, 키 존재, 금칙어, 숫자 일치</td></tr>
+            <tr><td>사람</td><td>느림</td><td>비쌈</td><td>기준</td><td>최종 확인, judge 검증용 표본</td></tr>
+            <tr><td>모델(judge)</td><td>빠름</td><td>호출당</td><td>루브릭이 좋으면 높음</td><td>의미 판정, 루브릭 채점</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        핵심 원칙은 <strong>“가능하면 코드, 필요하면 모델, 최소한 사람”</strong>입니다. 코드로 잡을 수 있는 것을 모델에게 물으면
+        돈과 재현성을 동시에 잃습니다. 예를 들어 “JSON에 <span class="path">score</span> 키가 있는가”는 코드가 100% 정확하게 봅니다.
+      </p>
+
+<pre data-lang="python"><code>def code_checks(output: dict, schema: dict) -&gt; list[str]:
+    """모델 판정 없이 잡을 수 있는 것을 먼저 잡는다."""
+    problems = []
+    for key in schema.get("required", []):
+        if key not in output or output[key] in (None, "", []):
+            problems.append(f"필수 키 누락: {key}")
+    if "score" in output:
+        s = output["score"]
+        if not isinstance(s, int) or not (0 &lt;= s &lt;= 10):
+            problems.append(f"score 범위 위반: {s}")
+    if "rationale" in output and len(str(output["rationale"])) &lt; 10:
+        problems.append("근거가 너무 짧음")
+    return problems</code></pre>
+
+      <p>
+        이렇게 코드 검사로 먼저 걸러내고, <strong>통과한 것만</strong> 모델 judge에게 보냅니다. 그러면 judge 호출이 줄고,
+        judge의 오류가 우리 시스템 오류로 둔갑하지 않습니다.
+      </p>
+
+      <h2 id="m4-04">4.4 judge 프롬프트 설계 7원칙</h2>
+
+      <p>
+        judge는 “채점하는 모델”입니다. 잘 쓰면 사람과 80~90% 일치하고, 못 쓰면 동전 던지기보다 조금 나은 정도입니다.
+        차이는 거의 전부 <strong>프롬프트 설계</strong>에서 납니다.
+      </p>
+
+      <ol>
+        <li><strong>루브릭을 먼저 준다.</strong> “좋은 답인가?”를 묻지 말고 “이 조건을 충족했는가?”를 묻습니다.</li>
+        <li><strong>이진 판정 + 근거.</strong> 참/거짓과 한 문장 근거를 함께 받습니다. 점수는 코드가 계산합니다.</li>
+        <li><strong>근거를 먼저, 판정을 나중에.</strong> <span class="path">&lt;thinking&gt;</span>에 인용·검토를 쓰고 <span class="path">&lt;met&gt;</span>을 뒤에 둡니다.</li>
+        <li><strong>판정 기준의 경계를 예시로 못 박는다.</strong> “표현이 달라도 의미가 같으면 충족” 같은 문장이 필수입니다.</li>
+        <li><strong>모르는 것에 출구를 준다.</strong> “판정 불가”를 허용합니다. 억지 판정이 더 해롭습니다.</li>
+        <li><strong>온도 0, 그리고 응답 파싱 실패 처리.</strong> 파싱 실패를 조용히 0점으로 만들지 마세요 — <em>오류</em>로 남겨야 합니다.</li>
+        <li><strong>judge와 피평가자를 분리한다.</strong> 채점 대상 텍스트를 태그로 격리하고(프롬프트 인젝션 방지), 가능하면 다른 모델 계열을 씁니다.</li>
+      </ol>
+
+      <div class="callout danger">
+        <span class="callout-title">judge의 세 가지 편향</span>
+        <ul style="margin-bottom:0">
+          <li><strong>위치 편향</strong> — A/B를 나란히 주면 앞쪽을 선호하는 경향. 순서를 바꿔 두 번 물어 평균을 냅니다.</li>
+          <li><strong>길이 편향</strong> — 긴 답을 더 좋게 봅니다. “분량은 평가 요소가 아니다”를 명시합니다.</li>
+          <li><strong>자기 선호</strong> — 자기 계열 모델의 문체를 좋아합니다. 가능하면 <em>다른 모델</em>로 채점하거나, 채점 기준을 문체가 아닌 내용에 묶습니다.</li>
+        </ul>
+      </div>
+
+      <h2 id="m4-05">4.5 judge 코드: XML · 재시도 · 온도</h2>
+
+      <p>
+        judge 호출은 <strong>실패를 정상으로 가정</strong>하고 짜야 합니다. 태그가 빠지고, 앞에 설명이 붙고, 가끔 빈 응답이 옵니다.
+        그때 0점을 주면 <em>시스템 오류가 학생 점수</em>가 됩니다. 반드시 구분하세요.
+      </p>
+
+<pre data-lang="python"><code>import json, re, time
+
+JUDGE_SYSTEM = """당신은 채점 결과를 검토하는 평가자입니다.
+- 주어진 채점 기준(rubric)만 사용합니다. 새로운 기준을 만들지 않습니다.
+- 응답에 없는 내용을 추정해 충족으로 처리하지 않습니다.
+- 판정이 불가능하면 &lt;met&gt;unknown&lt;/met&gt; 을 씁니다.
+- 출력은 지정된 XML 태그만 사용합니다."""
+
+def judge_once(prompt: str, retries: int = 2) -&gt; dict:
+    last_err = None
+    for attempt in range(retries + 1):
+        try:
+            resp = client.messages.create(
+                model=MODEL, max_tokens=1200, temperature=0,
+                system=JUDGE_SYSTEM,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            raw = "".join(b.text for b in resp.content if b.type == "text")
+            parsed = parse_judge(raw)
+            if parsed["ok"]:
+                return parsed
+            last_err = f"태그 없음(시도 {attempt+1}): {raw[:120]}"
+        except Exception as e:                       # 네트워크·레이트리밋
+            last_err = repr(e)
+            time.sleep(2 ** attempt)                  # 지수 백오프
+    return {"ok": False, "error": last_err}
+
+def parse_judge(raw: str) -&gt; dict:
+    met = re.findall(r'&lt;criterion id="(\w+)"&gt;\s*&lt;met&gt;(true|false|unknown)&lt;/met&gt;', raw)
+    if not met:
+        return {"ok": False}
+    return {
+        "ok": True,
+        "met": {cid: val for cid, val in met},
+        "rationale": (re.search(r"&lt;rationale&gt;(.*?)&lt;/rationale&gt;", raw, re.S) or [None, ""])[1].strip(),
+        "raw": raw,
+    }</code></pre>
+
+      <div class="callout warn">
+        <span class="callout-title"><span class="path">unknown</span>을 꼭 세세요</span>
+        <p>
+          <span class="path">unknown</span> 비율이 10%를 넘으면 루브릭이 모호하다는 신호입니다.
+          “이 요소가 응답에 있는지 판단할 수 없다”는 것은 <em>기준이 판정 가능하게 쓰이지 않았다</em>는 뜻입니다.
+          unknown을 버리지 말고 세어 보세요. 가장 값진 디버그 정보입니다.
+        </p>
+      </div>
+      <h2 id="m4-06">4.6 우리 도메인: 서술형 루브릭 채점</h2>
+
+      <p>
+        이제 실제 서술형 문항에 붙입니다. 좋은 루브릭은 <strong>“읽는 사람이 판정할 수 있는 문장”</strong>으로 되어 있습니다.
+        “잘 서술했다”는 판정 불가이고, “채집한 잎을 손상하지 않도록 다루는 태도를 언급했다”는 판정 가능합니다.
+      </p>
+
+      <h3>루브릭 작성 5원칙</h3>
+      <ol>
+        <li><strong>한 요소에 한 판정.</strong> “정확히 지목하고 근거도 제시했다”는 두 요소로 쪼갭니다.</li>
+        <li><strong>응답에서 관찰 가능한 것만.</strong> “이해했다”가 아니라 “~라고 썼다”.</li>
+        <li><strong>부정 기준은 별도 축으로.</strong> 감점 요인(오개념·문항 밖 서술)은 요소 배점을 깎지 말고 따로 기록합니다.</li>
+        <li><strong>배점은 사람이 정합니다.</strong> 모델에게 “이 요소는 몇 점이 적당한가”를 묻지 마세요.</li>
+        <li><strong>버전과 해시를 남깁니다.</strong> 루브릭이 바뀌면 이전 점수와 비교할 수 없습니다.</li>
+      </ol>
+
+<pre data-lang="python"><code>import hashlib, json
+
+RUBRIC_V1 = {
+    "version": "v1",
+    "total": 10,
+    "criteria": [
+        {"id": "C1", "points": 3,
+         "desc": "(가)에서 요구된 탐구 과정 요소를 '예상' 또는 '추리'로 지목했다"},
+        {"id": "C2", "points": 3,
+         "desc": "(나) ①의 활동을 '관찰'로 지목했다"},
+        {"id": "C3", "points": 2,
+         "desc": "각 요소를 그렇게 판단한 근거를 제시문의 표현과 연결해 서술했다"},
+        {"id": "C4", "points": 2,
+         "desc": "채집·관찰 활동에서 생물을 다루는 태도나 관찰 도구의 안전한 사용을 유의점으로 서술했다"},
+    ],
+    "penalties": [
+        {"id": "P1", "points": -2, "desc": "교육과정이나 문항에 없는 개념을 사실처럼 서술했다"},
+        {"id": "P2", "points": -1, "desc": "문항이 묻지 않은 내용을 길게 서술해 핵심 요소가 흐려졌다"},
+    ],
+    "floor": 0,
+}
+
+def rubric_hash(rubric: dict) -&gt; str:
+    payload = json.dumps(rubric, ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(payload.encode()).hexdigest()[:12]</code></pre>
+
+      <div class="callout imgo">
+        <span class="callout-title">💡 2차(논술·면접)로 확장할 때</span>
+        <p>
+          구조는 그대로 쓰되 <strong>축을 바꿉니다.</strong> 1차 서술형은 “요소 포함 여부”가 중심이지만,
+          2차 논술은 <em>논리 전개·근거의 적절성·교육적 관점</em>이 중심입니다. 이때도 원칙은 같습니다 —
+          “논리적이다” 대신 “주장 → 근거 → 적용의 순서로 단락이 구성되었다”, “근거가 교육과정 성취기준과 연결되었다”처럼
+          <strong>관찰 가능한 문장</strong>으로 바꿉니다. 루브릭 문장을 다듬는 데 시간을 쓰는 것이, judge 모델을 바꾸는 것보다
+          거의 항상 더 큰 효과를 냅니다.
+        </p>
+      </div>
+
+      <h3>채점자 흔들림(rater drift) 점검</h3>
+      <p>
+        같은 답을 두 번 채점했을 때 결과가 달라지면, 그 채점기는 쓸 수 없습니다.
+        <strong>같은 20건을 두 번 돌려 일치율</strong>을 확인하는 것이 가장 싼 검사입니다.
+      </p>
+
+<pre data-lang="python"><code>def self_consistency(prompt_builder, items: list[dict], rubric: dict, runs: int = 2) -&gt; float:
+    """같은 문항·응답을 여러 번 채점해 요소 판정이 일치하는 비율."""
+    stable = total = 0
+    for item in items:
+        verdicts = []
+        for _ in range(runs):
+            parsed = judge_once(prompt_builder(item, rubric))
+            verdicts.append(parsed.get("met", {}))
+        keys = set().union(*[set(v) for v in verdicts]) if verdicts else set()
+        for k in keys:
+            values = {v.get(k) for v in verdicts}
+            total += 1
+            if len(values) == 1:
+                stable += 1
+    return stable / max(1, total)</code></pre>
+
+      <p>
+        0.9 이상이면 안정적입니다. 0.8 아래라면 대개 원인이 셋입니다 — 루브릭이 모호함, 응답이 아주 짧음,
+        <span class="path">unknown</span>을 너무 많이 냄. 앞의 둘은 루브릭으로, 마지막은 프롬프트로 고칩니다.
+      </p>
+
+      <h2 id="m4-07">4.7 다축 채점과 부분점수</h2>
+
+      <p>
+        한 숫자로 채점하면 해석이 안 됩니다. “7점”이 내용이 좋아서인지 형식이 좋아서인지 알 수 없습니다.
+        그래서 <strong>축을 나누고, 축별 점수를 코드로 합산</strong>합니다.
+      </p>
+
+<pre data-lang="python"><code>AXES = {
+    "content": {"label": "내용 정확성", "weight": 0.5},
+    "evidence": {"label": "근거 제시", "weight": 0.3},
+    "structure": {"label": "구성·표현", "weight": 0.2},
+}
+
+def axes_to_score(axis_ratios: dict[str, float], max_score: int = 10) -&gt; float:
+    """axis_ratios: 축별 충족 비율(0~1). 가중합 → 점수."""
+    total_w = sum(a["weight"] for a in AXES.values())
+    ratio = sum(AXES[k]["weight"] * axis_ratios.get(k, 0.0) for k in AXES) / total_w
+    return round(ratio * max_score, 1)
+
+
+def summarize_axes(results: list[dict]) -> dict:
+    """여러 응답을 축별로 집계 — 어디가 약한지 보인다."""
+    out = {}
+    for key, a in AXES.items():
+        vals = [r["axes"].get(key, 0.0) for r in results if key in r.get("axes", {})]
+        out[key] = {
+            "label": a["label"],
+            "avg": round(sum(vals) / len(vals), 3) if vals else None,
+            "n": len(vals),
+        }
+    return out</code></pre>
+
+      <div class="callout tip">
+        <span class="callout-title">부분점수가 필요할 때</span>
+        <p>
+          요소가 3점짜리인데 “절반만 맞은” 경우가 있습니다. 이때 모델에게 “1.5점”을 물으면 재현성이 무너집니다.
+          대신 요소를 <strong>하위 판정 두 개</strong>로 쪼개세요. “지목했다(1.5)” + “정확한 용어를 썼다(1.5)”처럼
+          이진 판정 두 개로 만들면 부분점수가 자연스럽게 나옵니다. <em>부분점수는 쪼개기로 만드는 것</em>이지,
+          물어서 얻는 것이 아닙니다.
+        </p>
+      </div>
+
+      <h2 id="m4-08">4.8 사람 채점과의 일치도 (카파)</h2>
+
+      <p>
+        judge가 사람과 “얼마나 같은 판단을 하는가”를 재는 표준 지표가 <strong>Cohen’s kappa</strong>입니다.
+        단순 일치율은 우연히 맞는 경우를 세지 않기 때문에 부풀려집니다. 카파는 우연 일치를 빼고 계산합니다.
+      </p>
+
+<pre data-lang="python"><code>import numpy as np
+
+def cohen_kappa(human: list[str], model: list[str]) -&gt; dict:
+    """human/model: 같은 길이의 라벨 리스트. 이진 또는 다범주 모두 가능."""
+    assert len(human) == len(model), "라벨 수가 다릅니다"
+    labels = sorted(set(human) | set(model))
+    n = len(human)
+    idx = {lab: i for i, lab in enumerate(labels)}
+    m = np.zeros((len(labels), len(labels)), dtype=int)
+    for h, g in zip(human, model):
+        m[idx[h], idx[g]] += 1
+
+    po = np.trace(m) / n                                   # 관측 일치율
+    row = m.sum(axis=1) / n
+    col = m.sum(axis=0) / n
+    pe = float((row * col).sum())                          # 우연 일치율
+    kappa = (po - pe) / (1 - pe) if pe &lt; 1 else 0.0
+
+    # 라벨별 일치 (주로 'true' 쪽이 중요)
+    per_label = {}
+    for lab in labels:
+        i = idx[lab]
+        tp = m[i, i]
+        per_label[lab] = round(tp / max(1, m[i, :].sum()), 3)
+    return {"n": n, "observed_agreement": round(float(po), 3),
+            "expected_agreement": round(pe, 3), "kappa": round(float(kappa), 3),
+            "per_label_recall": per_label, "matrix": m.tolist(), "labels": labels}</code></pre>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>카파</th><th>해석</th><th>조치</th></tr></thead>
+          <tbody>
+            <tr><td>0.80 이상</td><td>사람과 거의 같음</td><td>보조 채점기로 사용 가능(최종은 사람)</td></tr>
+            <tr><td>0.60~0.80</td><td>쓸 만함, 경계 사례에서 다툼</td><td>불일치 사례를 읽고 루브릭 보강</td></tr>
+            <tr><td>0.40~0.60</td><td>불안정</td><td>루브릭 문장·판정 기준 재작성</td></tr>
+            <tr><td>0.40 미만</td><td>사실상 다른 일을 하고 있음</td><td>judge를 쓰지 말거나 과업을 재정의</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout warn">
+        <span class="callout-title">사람 채점도 완벽하지 않습니다</span>
+        <p>
+          카파를 재기 전에 <strong>사람끼리의 카파</strong>를 한 번 재 보세요. 두 사람이 같은 답을 0.7 정도로만 일치한다면,
+          그 루브릭은 판정 가능하게 쓰이지 않은 것입니다. 이때 모델을 탓하는 건 시간 낭비입니다.
+          사람 간 불일치 사례를 읽으면 루브릭의 구멍이 그대로 보입니다.
+        </p>
+      </div>
+
+      <h2 id="m4-09">4.9 회귀 테스트와 promptfoo</h2>
+
+      <p>
+        프롬프트를 고칠 때마다 <strong>같은 골든셋</strong>을 돌려 점수를 비교합니다. 이것을 회귀 테스트라 부릅니다.
+        목표는 “점수가 올랐다”가 아니라 <strong>“어떤 항목이 왜 바뀌었는지 안다”</strong>입니다.
+      </p>
+
+<pre data-lang="python"><code>import json, time
+from pathlib import Path
+
+def load_jsonl(path: str) -&gt; list[dict]:
+    return [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
+
+def run_eval(dataset_path: str, prompt_builder, rubric: dict, name: str) -&gt; dict:
+    Path("evals/results").mkdir(parents=True, exist_ok=True)
+    items = load_jsonl(dataset_path)
+    rows = []
+    for item in items:
+        parsed = judge_once(prompt_builder(item, rubric))
+        if not parsed["ok"]:
+            rows.append({"id": item["id"], "status": "error", "detail": parsed.get("error", "")})
+            continue
+        score = score_of(parsed, rubric)                  # 모듈 1의 함수 재사용
+        rows.append({
+            "id": item["id"],
+            "status": "ok",
+            "score": score["score"],
+            "max": rubric["total"],
+            "expected": item.get("expected_score"),
+            "delta": None if item.get("expected_score") is None else score["score"] - item["expected_score"],
+            "criteria": {k: v[0] for k, v in parsed["met"].items()},
+        })
+
+    ok = [r for r in rows if r["status"] == "ok"]
+    result = {
+        "name": name,
+        "rubric": rubric.get("version"),
+        "rubric_hash": rubric_hash(rubric),
+        "n": len(rows),
+        "errors": len(rows) - len(ok),
+        "mean_score": round(sum(r["score"] for r in ok) / max(1, len(ok)), 2),
+        "within_1pt": round(sum(1 for r in ok if r["delta"] is not None and abs(r["delta"]) &lt;= 1) / max(1, len(ok)), 3),
+        "rows": rows,
+        "ran_at": time.strftime("%Y-%m-%d %H:%M"),
+    }
+    Path(f"evals/results/{name}.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    return result
+
+def compare(before: dict, after: dict) -&gt; None:
+    print(f"{'':16} {'before':&gt;8} {'after':&gt;8}  delta")
+    for key in ("mean_score", "within_1pt", "errors"):
+        b, a = before.get(key, 0), after.get(key, 0)
+        print(f"{key:16} {b:&gt;8} {a:&gt;8}  {a - b:+.2f}")</code></pre>
+
+      <p>
+        규모가 커지고 비교할 프롬프트가 늘면 <strong>promptfoo</strong> 같은 도구로 옮기는 게 좋습니다.
+        YAML 하나로 프롬프트·테스트·채점기를 선언하고, 결과를 웹 UI로 비교합니다.
+      </p>
+
+<pre data-lang="yaml"><code># promptfooconfig.yaml
+prompts:
+  - file://prompts/grade_essay_v1.md
+  - file://prompts/grade_essay_v2.md
+
+providers:
+  - id: anthropic:messages:claude-sonnet-5-5
+    config:
+      temperature: 0
+
+defaultTest:
+  assert:
+    # 코드로 잡을 수 있는 것 먼저
+    - type: contains
+      value: "&lt;criterion id="
+    - type: javascript
+      value: |
+        const raw = output;
+        const n = (raw.match(/&lt;criterion id="/g) || []).length;
+        return n === 4;
+    # 의미 판정은 rubric 기반 judge
+    - type: llm-rubric
+      value: |
+        채점 결과가 주어진 루브릭의 4개 요소를 모두 판정했고,
+        각 판정에 응답에서 인용한 근거가 붙어 있으면 통과.
+
+tests:
+  - vars:
+      item: file://fixtures/과학_2019_05.md
+      rubric: file://fixtures/rubric_v1.json
+      response: file://fixtures/response_01.txt
+  - vars:
+      item: file://fixtures/과학_2019_05.md
+      rubric: file://fixtures/rubric_v1.json
+      response: file://fixtures/response_02.txt</code></pre>
+
+<pre data-lang="bash"><code>npx promptfoo@latest eval          # 실행
+npx promptfoo@latest view          # 결과 비교 UI</code></pre>
+
+      <div class="callout tip">
+        <span class="callout-title">CI에 붙이는 순서</span>
+        <p>
+          처음부터 전부 자동화하지 마세요. (1) 주 1회 로컬에서 20건 돌려 기록 → (2) 프롬프트 파일이 바뀌면 자동 실행 →
+          (3) <span class="path">mean_score</span>가 0.5점 이상 떨어지면 실패 → (4) 사람이 확인. 이 순서가 현실적입니다.
+          회귀 테스트는 <em>알람</em>이지 <em>재판</em>이 아닙니다.
+        </p>
+      </div>
+      <h2 id="m4-10">4.10 대량 채점 파이프라인</h2>
+
+      <p>
+        학생 응답 8천 건을 채점한다고 합시다. 하나씩 호출하면 8천 번의 왕복이 필요하고, 중간에 한 번 끊기면 처음부터입니다.
+        이때 쓰는 것이 <strong>배치 처리</strong>입니다. 요청을 묶어 제출하고, 결과를 나중에 받습니다.
+        보통 <strong>비용이 절반</strong>이고, 지연은 “수 분~수십 분”이지만 대량 작업에서는 문제가 되지 않습니다.
+      </p>
+
+<pre data-lang="python"><code>import json, os
+from pathlib import Path
+
+def build_batch_requests(rows: list[dict], prompt_builder, rubric: dict) -&gt; list[dict]:
+    reqs = []
+    for r in rows:
+        reqs.append({
+            "custom_id": r["id"],                    # 결과를 원본과 연결하는 키
+            "params": {
+                "model": MODEL,
+                "max_tokens": 1200,
+                "temperature": 0,
+                "system": JUDGE_SYSTEM,
+                "messages": [{"role": "user", "content": prompt_builder(r, rubric)}],
+            },
+        })
+    return reqs
+
+def submit_batch(reqs: list[dict]):
+    return client.messages.batches.create(requests=reqs)
+
+def wait_batch(batch_id: str, interval: int = 60, timeout_min: int = 240):
+    import time
+    waited = 0
+    while waited &lt; timeout_min * 60:
+        b = client.messages.batches.retrieve(batch_id)
+        print(b.processing_status, waited // 60, "분 경과")
+        if b.processing_status == "ended":
+            return b
+        time.sleep(interval)
+        waited += interval
+    raise TimeoutError("배치가 시간 내에 끝나지 않았습니다")
+
+def collect_batch(batch_id: str, rubric: dict) -&gt; list[dict]:
+    out = []
+    for entry in client.messages.batches.results(batch_id):
+        if entry.result.type != "succeeded":
+            out.append({"id": entry.custom_id, "status": entry.result.type})
+            continue
+        raw = "".join(b.text for b in entry.result.message.content if b.type == "text")
+        parsed = parse_judge(raw)
+        if not parsed["ok"]:
+            out.append({"id": entry.custom_id, "status": "parse_error"})
+            continue
+        s = score_of(parsed, rubric)
+        out.append({"id": entry.custom_id, "status": "ok", "score": s["score"], "max": s["max"],
+                    "criteria": {k: v[0] for k, v in parsed["met"].items()},
+                    "rationale": parsed["rationale"]})
+    return out</code></pre>
+
+      <h3>끊겨도 이어서: 재개 가능한 파이프라인</h3>
+      <p>
+        대량 작업의 핵심은 <strong>이미 끝난 것을 다시 하지 않는 것</strong>입니다. 결과를 JSONL로 append하고,
+        시작할 때 <span class="path">done.json</span>을 읽어 건너뜁니다.
+      </p>
+
+<pre data-lang="python"><code>def run_resumable(rows: list[dict], prompt_builder, rubric: dict,
+                  out_csv: str = "out/grades.csv", out_jsonl: str = "out/grades.jsonl") -&gt;
+                  None:
+    Path("out").mkdir(exist_ok=True)
+    done = set()
+    if Path(out_jsonl).exists():
+        for line in Path(out_jsonl).read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                done.add(json.loads(line)["id"])
+
+    todo = [r for r in rows if r["id"] not in done]
+    print(f"전체 {len(rows)} / 완료 {len(done)} / 남음 {len(todo)}")
+
+    CHUNK = 500
+    for i in range(0, len(todo), CHUNK):
+        part = todo[i:i + CHUNK]
+        batch = submit_batch(build_batch_requests(part, prompt_builder, rubric))
+        print("제출:", batch.id, len(part), "건")
+        wait_batch(batch.id)
+        results = collect_batch(batch.id, rubric)
+        with open(out_jsonl, "a", encoding="utf-8") as f:
+            for r in results:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+
+    # CSV는 마지막에 한 번
+    import csv
+    rows_all = [json.loads(l) for l in Path(out_jsonl).read_text(encoding="utf-8").splitlines() if l.strip()]
+    with open(out_csv, "w", encoding="utf-8-sig", newline="") as f:   # 엑셀 한글 깨짐 방지 BOM
+        w = csv.DictWriter(f, fieldnames=["id", "status", "score", "max", "rationale"])
+        w.writeheader()
+        for r in rows_all:
+            w.writerow({k: r.get(k, "") for k in w.fieldnames})
+    print("저장:", out_csv, len(rows_all), "행")</code></pre>
+
+      <div class="callout warn">
+        <span class="callout-title">엑셀에서 열 것이면 <span class="path">utf-8-sig</span></span>
+        <p>
+          한글 CSV가 깨지는 원인은 거의 항상 인코딩입니다. <span class="path">utf-8-sig</span>로 저장하면 엑셀이 바로 읽습니다.
+          그리고 <span class="path">custom_id</span>는 <strong>파일명·학번·문항 id</strong>처럼 의미 있는 값을 쓰세요.
+          나중에 “이 점수가 누구 것인지” 찾는 데 쓰입니다.
+        </p>
+      </div>
+
+      <h2 id="m4-11">4.11 비용·속도 최적화</h2>
+
+      <p>채점 비용은 <em>호출 수 × 평균 토큰</em>입니다. 네 가지 지렛대가 있습니다.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>지렛대</th><th>방법</th><th>효과</th><th>주의</th></tr></thead>
+          <tbody>
+            <tr><td>호출 수 줄이기</td><td>코드 검사로 먼저 거르기, 빈 응답·중복 응답 제외</td><td>10~30%</td><td>거른 것을 로그로 남길 것</td></tr>
+            <tr><td>중복 제거</td><td>같은 응답 텍스트는 해시로 묶어 1회만 채점</td><td>제출물에 따라 큼</td><td>문항이 다르면 결과도 다르다 — (문항, 응답) 쌍으로 해시</td></tr>
+            <tr><td>모델 등급 분리</td><td>단순 요소는 저가 모델, 복합 판단만 상위 모델</td><td>30~50%</td><td>등급 간 일치도를 확인할 것</td></tr>
+            <tr><td>프롬프트 캐싱</td><td>루브릭·규칙을 고정 구간으로</td><td>입력 비용 큰 폭 감소</td><td>모듈 1의 캐시 주의사항 그대로</td></tr>
+            <tr><td>배치 API</td><td>수백 건 단위 묶음 제출</td><td>비용 절반 수준</td><td>즉시 응답이 필요 없는 작업만</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+<pre data-lang="python"><code>import hashlib
+
+def dedupe_jobs(rows: list[dict]) -&gt; tuple[list[dict], dict[str, list[str]]]:
+    """(문항 id, 응답 텍스트) 해시가 같으면 한 번만 채점하고 나중에 결과를 복사한다."""
+    unique, groups = [], {}
+    for r in rows:
+        key = hashlib.sha256(f"{r['item_id']}::{r['response']}".encode()).hexdigest()[:16]
+        groups.setdefault(key, []).append(r["id"])
+        if len(groups[key]) == 1:
+            unique.append({**r, "id": key})
+    return unique, groups
+
+def fanout_results(unique_results: list[dict], groups: dict[str, list[str]]) -&gt; list[dict]:
+    by_key = {r["id"]: r for r in unique_results}
+    out = []
+    for key, ids in groups.items():
+        base = by_key.get(key)
+        if not base:
+            continue
+        for original_id in ids:
+            out.append({**base, "id": original_id})
+    return out</code></pre>
+
+      <div class="callout tip">
+        <span class="callout-title">먼저 100건으로 전체 비용을 추정하세요</span>
+        <p>
+          100건을 돌려 <strong>평균 입력·출력 토큰</strong>을 재고, 여기에 단가를 곱하면 전체 견적이 나옵니다.
+          “대략 얼마겠지”로 시작하면 중간에 멈추게 됩니다. 그리고 100건 결과를 <em>사람이 20건만</em> 확인해
+          정확도를 먼저 점검하세요. 잘못된 프롬프트로 8천 건을 돌리는 것이 가장 비싼 실수입니다.
+        </p>
+      </div>
+
+      <h2 id="m4-12">4.12 eval 결과를 읽는 법</h2>
+
+      <p>
+        마지막으로 숫자를 읽는 법입니다. 여기서 실수하면 <strong>우연을 개선으로 착각</strong>합니다.
+      </p>
+
+      <p>
+        20문항짜리 평가셋에서 정확도가 80%에서 85%로 올랐다면, 그건 <em>문항 하나가 바뀐 것</em>입니다.
+        표본이 작으면 신뢰구간이 넓습니다. 대략 이렇게 계산합니다.
+      </p>
+
+<pre data-lang="python"><code>import math
+
+def wilson_interval(success: int, n: int, z: float = 1.96) -&gt; tuple[float, float]:
+    """비율의 95% 신뢰구간 (윌슨). 작은 표본에서도 그럴듯하게 동작한다."""
+    if n == 0:
+        return (0.0, 1.0)
+    p = success / n
+    denom = 1 + z**2 / n
+    center = (p + z**2 / (2 * n)) / denom
+    half = z * math.sqrt(p * (1 - p) / n + z**2 / (4 * n**2)) / denom
+    return (round(max(0, center - half), 3), round(min(1, center + half), 3))
+
+for n in (20, 50, 100, 400):
+    lo, hi = wilson_interval(int(n * 0.8), n)
+    print(f"n={n:4d}  80%  →  95% CI [{lo:.2f}, {hi:.2f}]  폭 {hi-lo:.2f}")</code></pre>
+
+      <pre data-lang="text">n=  20  80%  →  95% CI [0.58, 0.92]  폭 0.34
+n=  50  80%  →  95% CI [0.67, 0.89]  폭 0.22
+n= 100  80%  →  95% CI [0.71, 0.87]  폭 0.16
+n= 400  80%  →  95% CI [0.76, 0.84]  폭 0.08</pre>
+
+      <p>
+        n=20에서 80%는 <strong>“58%일 수도 92%일 수도 있다”</strong>는 뜻입니다. 그래서 20문항에서는 5%p 차이를 믿으면 안 됩니다.
+        판단 기준을 이렇게 잡으세요.
+      </p>
+
+      <ul>
+        <li><strong>20문항</strong> — “완전히 망가졌는지”만 본다. 60% 아래로 떨어지면 즉시 롤백.</li>
+        <li><strong>50~100문항</strong> — 10%p 이상 차이는 의미 있다.</li>
+        <li><strong>400문항 이상</strong> — 4~5%p 차이도 읽을 수 있다.</li>
+      </ul>
+
+      <h3>평균보다 중요한 것: 불일치 사례</h3>
+      <p>
+        <span class="path">mean_score</span>가 0.3점 올랐다는 사실보다, <strong>어떤 항목이 여전히 틀리는지</strong>가 중요합니다.
+        결과 JSON에서 <span class="path">delta</span>가 가장 큰(절댓값) 5건을 뽑아 읽으세요. 원인이 대개 반복됩니다 — 특정 유형,
+        특정 길이, 특정 과목. 그 하나를 고치면 평균이 3점 오르기도 합니다.
+      </p>
+
+      <div class="callout imgo">
+        <span class="callout-title">💡 이 숫자들은 나중에 ‘내 기록’이 됩니다</span>
+        <p>
+          <span class="path">evals/results/</span>에 쌓이는 JSON은 단순 로그가 아니라 <em>개발 일지</em>입니다.
+          “2026-11-20 프롬프트 v2, 20문항 평균 8.1, unknown 4%, 최악: C3(근거 제시)” 같은 기록이 있으면
+          두 달 뒤에도 왜 그렇게 만들었는지 알 수 있습니다. 규칙 하나가 바뀌었을 때 <strong>무엇이 영향받는지</strong>
+          추적하는 유일한 방법이기도 합니다.
+        </p>
+      </div>
+
+      <h2 id="m4-13">4.13 자가 점검</h2>
+
+      <div class="quiz">
+        <p class="quiz-q"><span class="qnum">Q1</span>judge에게 “0~10점으로 채점하라”고 하는 대신 요소별 이진 판정을 받는 이유로 가장 정확한 것은?</p>
+        <div class="quiz-opts">
+          <button class="quiz-opt" data-correct="false">토큰을 아낄 수 있어서</button>
+          <button class="quiz-opt" data-correct="true">재현성과 근거가 생기고, 배점 변경이 코드 한 줄로 끝나기 때문</button>
+          <button class="quiz-opt" data-correct="false">이진 판정이 항상 정확하기 때문</button>
+          <button class="quiz-opt" data-correct="false">점수 범위를 모델이 모르기 때문</button>
+        </div>
+        <div class="quiz-why" hidden><p><strong>4.4 · 1.11.</strong> 숫자는 근거에서 계산된 값이 아닙니다. 요소 판정 → 코드 합산이 표준 패턴입니다.</p></div>
+      </div>
+
+      <div class="quiz">
+        <p class="quiz-q"><span class="qnum">Q2</span>카파가 0.45로 나왔다. 가장 먼저 할 일은?</p>
+        <div class="quiz-opts">
+          <button class="quiz-opt" data-correct="false">더 큰 모델로 judge를 바꾼다</button>
+          <button class="quiz-opt" data-correct="true">불일치 사례를 읽고 루브릭 문장을 판정 가능하게 다시 쓴다</button>
+          <button class="quiz-opt" data-correct="false">평가셋을 더 많이 만든다</button>
+          <button class="quiz-opt" data-correct="false">카파 대신 단순 일치율을 쓴다</button>
+        </div>
+        <div class="quiz-why" hidden><p><strong>4.8.</strong> 낮은 카파는 대개 루브릭이 모호하다는 신호입니다. 모델 교체보다 기준 재작성이 먼저입니다.</p></div>
+      </div>
+
+      <div class="quiz">
+        <p class="quiz-q"><span class="qnum">Q3</span>20문항 평가셋에서 정확도가 80%→85%가 되었다. 올바른 해석은?</p>
+        <div class="quiz-opts">
+          <button class="quiz-opt" data-correct="false">5%p 개선되었으니 배포한다</button>
+          <button class="quiz-opt" data-correct="true">표본이 작아 우연일 수 있으므로 큰 셋으로 확인하거나 불일치 사례를 직접 읽는다</button>
+          <button class="quiz-opt" data-correct="false">85%는 좋은 점수이므로 더 볼 필요 없다</button>
+          <button class="quiz-opt" data-correct="false">평가셋을 80%가 나오게 고친다</button>
+        </div>
+        <div class="quiz-why" hidden><p><strong>4.12.</strong> n=20에서 95% 구간 폭은 30%p를 넘습니다. 문항 하나가 바뀐 것과 구분되지 않습니다.</p></div>
+      </div>
+
+      <div class="quiz">
+        <p class="quiz-q"><span class="qnum">Q4</span>배치 API를 쓰면 좋은 작업은?</p>
+        <div class="quiz-opts">
+          <button class="quiz-opt" data-correct="false">학생이 제출 직후 점수를 봐야 하는 채점</button>
+          <button class="quiz-opt" data-correct="true">밤새 돌려 다음 날 확인하면 되는 대량 채점</button>
+          <button class="quiz-opt" data-correct="false">프롬프트를 고치며 즉시 비교하는 실험</button>
+          <button class="quiz-opt" data-correct="false">챗봇의 실시간 응답</button>
+        </div>
+        <div class="quiz-why" hidden><p><strong>4.10.</strong> 배치는 지연이 크고 비용이 낮습니다. 즉시성이 필요 없는 대량 작업에 맞습니다.</p></div>
+      </div>
+
+      <div class="quiz">
+        <p class="quiz-q"><span class="qnum">Q5</span>judge가 <span class="path">&lt;met&gt;unknown&lt;/met&gt;</span>을 20% 냈다. 무엇을 의심해야 하나?</p>
+        <div class="quiz-opts">
+          <button class="quiz-opt" data-correct="false">모델의 한국어 능력</button>
+          <button class="quiz-opt" data-correct="true">루브릭이 판정 가능한 문장으로 쓰이지 않았다</button>
+          <button class="quiz-opt" data-correct="false">temperature가 너무 낮다</button>
+          <button class="quiz-opt" data-correct="false">max_tokens가 부족하다</button>
+        </div>
+        <div class="quiz-why" hidden><p><strong>4.5 · 4.6.</strong> unknown은 “기준이 모호하다”는 신호입니다. 버리지 말고 세어서 루브릭을 고치세요.</p></div>
+      </div>
+
+      <h3>실습 과제</h3>
+      <ol>
+        <li>
+          <strong>골든셋 20건 만들기.</strong> 실제 응답 10건 + 합성 10건. 각 건에 요소별 기대 판정을 손으로 붙이세요.
+          이 작업이 이 모듈에서 가장 오래 걸리고 가장 값어치 있습니다.
+        </li>
+        <li>
+          <strong>카파 한 번 재기.</strong> 20건을 사람이 채점한 결과와 judge 결과로 <span class="path">cohen_kappa()</span>를 돌려 보세요.
+          0.6이 안 나오면 <em>불일치 3건</em>을 골라 루브릭을 고치고 다시 재세요. 두 번째 숫자가 첫 번째보다 의미 있습니다.
+        </li>
+        <li>
+          <strong>회귀 테스트 자동화.</strong> 프롬프트 파일을 <span class="path">prompts/</span>로 옮기고,
+          바뀌면 <span class="path">run_eval()</span>이 돌아 <span class="path">evals/results/</span>에 기록되게 하세요.
+          이 기록이 앞으로의 모든 판단 근거가 됩니다.
+        </li>
+      </ol>
+
+      <div class="callout imgo">
+        <span class="callout-title">💡 네 모듈을 한 줄로 연결하면</span>
+        <p>
+          <strong>1장</strong>에서 형식을 고정하고, <strong>2장</strong>에서 자료를 깨끗하게 만들고,
+          <strong>3장</strong>에서 필요한 것을 찾아 오고, <strong>4장</strong>에서 그게 좋은지 잰다.
+          이 네 가지가 있으면 <span class="path">imgo-node</span> 8천 문항은 <em>다루는 자료</em>가 아니라
+          <em>운영하는 시스템</em>이 됩니다. 부록에서 레포별 학습 순서와 복붙 스니펫을 정리했습니다.
+        </p>
+      </div>
+
+    </article>
+
+    <nav class="pager" aria-label="페이지 이동">
+      <a class="prev" href="module-3.html">
+        <span class="dir">← 이전</span>
+        <span class="ttl">모듈 3 · 8,000문항 RAG</span>
+      </a>
+      <a class="next" href="appendix.html">
+        <span class="dir">다음 →</span>
+        <span class="ttl">부록 · 코랩 / 레포 로드맵</span>
+      </a>
+    </nav>
+
+    <footer class="doc-footer">
+      <span>모듈 4 · 프롬프트 평가(Eval)와 자동 채점</span>
+      <span><a href="index.html">코스 홈</a> · <a href="module-3.html">모듈 3</a> · <a href="appendix.html">부록</a></span>
+    </footer>
+  </main>
+</div>
+
+<script src="assets/app.js"></script>
+</body>
+</html>

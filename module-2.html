@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="ko" data-page="module-2">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>모듈 2 · 교육과정·기출 문서 전처리 &amp; 비전 — AI 강의노트</title>
+<meta name="description" content="PDF 판별, 표·병합 셀 정규화, OCR 후처리, 도식 판독, HWPX, frontmatter 설계, 검수 상태 기계, 자동 린트까지 — imgo-node 스키마에 맞춘 전처리 강의노트.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem('ai-notes:theme');if(!t){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">본문으로</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menuBtn" aria-label="목차 열기" aria-expanded="false">☰</button>
+  <a class="brand" href="index.html">
+    <span class="brand-mark">AI</span>
+    <span>AI 강의노트<small>모몽가님 맞춤판</small></span>
+  </a>
+  <nav class="crumbs" aria-label="현재 위치"><a href="index.html" style="color:inherit;text-decoration:none">코스 홈</a> / <strong>모듈 2</strong></nav>
+  <div class="topbar-right">
+    <span class="progress-chip" data-progress-chip>0%</span>
+    <button class="icon-btn" id="themeBtn" aria-label="테마 전환">🌙</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="강의 목차">
+    <nav class="nav">
+      <a class="nav-item" href="index.html"><span class="nav-num">⌂</span>코스 홈</a>
+      <p class="nav-label">모듈</p>
+      <div class="nav-group">
+        <a class="nav-item" href="module-1.html"><span class="nav-num">1</span>프롬프트 설계 정석</a>
+        <div class="nav-sub"></div>
+      </div>
+      <div class="nav-group">
+        <a class="nav-item active" href="module-2.html"><span class="nav-num">2</span>문서 전처리 &amp; 비전</a>
+        <div class="nav-sub"></div>
+      </div>
+      <div class="nav-group">
+        <a class="nav-item" href="module-3.html"><span class="nav-num">3</span>8,000문항 RAG</a>
+        <div class="nav-sub"></div>
+      </div>
+      <div class="nav-group">
+        <a class="nav-item" href="module-4.html"><span class="nav-num">4</span>Eval &amp; 자동 채점</a>
+        <div class="nav-sub"></div>
+      </div>
+      <div class="nav-group">
+        <a class="nav-item" href="appendix.html"><span class="nav-num">+</span>부록 · 레포 로드맵</a>
+        <div class="nav-sub"></div>
+      </div>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="progress-label"><span>이 페이지 진도</span><span data-progress-text>0 / 0</span></div>
+      <div class="progress-track"><div class="progress-fill" data-progress-fill></div></div>
+      <button class="reset-link" data-reset-progress type="button">이 페이지 진도 초기화</button>
+    </div>
+  </aside>
+  <div class="backdrop" id="backdrop" hidden></div>
+
+  <main class="main" id="main">
+    <article class="doc">
+
+      <div class="doc-hero">
+        <span class="eyebrow">모듈 2 · 데이터</span>
+        <h1>교육과정·기출 문서 전처리 &amp; 비전</h1>
+        <p class="lede">
+          검색 품질이 나쁘면 대개 모델이 아니라 <strong>입력이 지저분합니다</strong>. PDF·스캔본·표·도식을
+          <span class="path">imgo-node</span>가 읽을 수 있는 마크다운으로 바꾸고, 검수 상태까지 붙이는 전 과정입니다.
+        </p>
+        <div class="meta-row">
+          <span class="meta-pill">13레슨</span>
+          <span class="meta-pill">약 100분</span>
+          <span class="meta-pill">선행: 파이썬 파일 처리</span>
+          <span class="meta-pill">근거: claude-cookbooks / multimodal</span>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <span class="callout-title">먼저 알아 둘 것: 여기가 가장 오래 걸립니다</span>
+        <p>
+          프롬프트는 30분이면 고치지만, 8천 문항의 원문을 깨끗하게 만드는 일은 며칠이 걸립니다. 그래서 순서가 중요합니다.
+          <strong>전부 자동화하려 들지 말고, “자동 → 사람 검수”의 경계를 설계</strong>하세요. 이 모듈의 마지막 절(2.10~2.11)이 그 경계를 만드는 법입니다.
+        </p>
+      </div>
+
+      <h2 id="m2-01">2.1 파이프라인 전체 지도</h2>
+
+      <p>원본에서 문항은 다음 네 단계를 지납니다. 각 단계의 실패는 <em>뒤로 갈수록 고치기 비싸집니다.</em></p>
+
+<pre data-lang="text">[1] 수집          [2] 추출              [3] 정규화                [4] 검수
+PDF/HWPX    →   텍스트·표·이미지   →   imgo-node 스키마 md   →   린트 + 사람 확인
+  │                │                     │                       │
+  │ 판별            │ OCR/비전            │ 절 제목 표준화          │ 상태 플래그
+  │ (텍스트/스캔)   │ 표 병합셀 정리       │ frontmatter 생성        │ draft / review / verified
+  ▼                ▼                     ▼                       ▼
+원본 보관       추출 로그           *.md + images/            report.json</pre>
+
+      <p>
+        핵심 원칙 하나만 강조하겠습니다. <strong>원본은 절대 지우지 않습니다.</strong>
+        <span class="path">content/_원본/</span> 같은 폴더에 PDF·HWPX를 그대로 두고, 추출물은 별도 경로에 씁니다.
+        나중에 “이 문장이 원래 있었나?”를 확인할 유일한 방법이 원본이기 때문입니다.
+        <span class="path">imgo-node</span>에 이미 <span class="path">content/_원본/과목별_한글/</span> 구조가 있는 이유이기도 합니다.
+      </p>
+
+      <div class="callout imgo">
+        <span class="callout-title">💡 목표 상태를 먼저 정해 두세요</span>
+        <p>
+          이 모듈의 출력물은 결국 <span class="path">imgo-qbank</span>가 읽을 수 있는 형태여야 합니다.
+          그 앱이 읽는 절 이름은 <span class="path">## 문제 본문</span> · <span class="path">## ✅ 정답</span> ·
+          <span class="path">## 📝 해설</span>이고, 인쇄에서 빠지는 부가 절은 <span class="path">## 태깅</span> ·
+          <span class="path">## 원문 전체면</span> 등입니다. <strong>처음부터 이 이름으로 쓰면</strong> 나중에 변환 단계가 사라집니다.
+        </p>
+      </div>
+
+      <h2 id="m2-02">2.2 PDF의 두 종류를 먼저 판별한다</h2>
+
+      <p>
+        PDF는 두 가지입니다. <strong>텍스트 PDF</strong>(워드·한글에서 내보낸 것)는 글자가 데이터로 들어 있고,
+        <strong>스캔 PDF</strong>는 페이지가 사진입니다. 둘은 처리 방법이 완전히 다르므로, 섞어서 처리하면
+        한쪽에서 반드시 사고가 납니다. 스캔본에 텍스트 추출을 걸면 빈 문자열이 나오고, 그 빈 문자열이
+        조용히 DB에 들어갑니다.
+      </p>
+
+      <p>판별은 간단합니다. 페이지마다 글자 수를 세어 보면 됩니다.</p>
+
+<pre data-lang="python"><code># pip install pypdf
+from pypdf import PdfReader
+from dataclasses import dataclass
+
+@dataclass
+class PdfProfile:
+    path: str
+    pages: int
+    chars_per_page: float
+    korean_ratio: float
+    kind: str          # "text" | "scan" | "mixed"
+
+def profile_pdf(path: str, sample_pages: int = 8) -&gt; PdfProfile:
+    reader = PdfReader(path)
+    n = len(reader.pages)
+    idx = list(range(min(n, sample_pages)))
+    total_chars, korean, letters = 0, 0, 0
+
+    for i in idx:
+        t = reader.pages[i].extract_text() or ""
+        total_chars += len(t)
+        for ch in t:
+            if ch.strip():
+                letters += 1
+                if "가" &lt;= ch &lt;= "힣":
+                    korean += 1
+
+    cpp = total_chars / max(1, len(idx))
+    kr = korean / max(1, letters)
+
+    if cpp &gt;= 200:
+        kind = "text"
+    elif cpp &lt; 30:
+        kind = "scan"
+    else:
+        kind = "mixed"     # 일부 페이지만 스캔 — 가장 위험한 경우
+
+    return PdfProfile(path, n, round(cpp, 1), round(kr, 3), kind)</code></pre>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>판정</th><th>기준(참고값)</th><th>다음 단계</th><th>주의</th></tr></thead>
+          <tbody>
+            <tr><td><span class="path">text</span></td><td>페이지당 200자 이상</td><td>2.3 텍스트 추출</td><td>표·수식은 여전히 깨질 수 있음</td></tr>
+            <tr><td><span class="path">scan</span></td><td>페이지당 30자 미만</td><td>2.5 OCR 또는 2.6 비전</td><td>먼저 기울기·해상도 확인</td></tr>
+            <tr><td><span class="path">mixed</span></td><td>그 사이</td><td>페이지별로 다시 판정</td><td>섞인 PDF가 가장 흔하다. 한 번에 처리하지 말 것</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        <span class="path">korean_ratio</span>는 왜 볼까요? 글자가 뽑혔는데 한글 비율이 비정상적으로 낮다면
+        <strong>인코딩이 깨졌거나</strong> 폰트가 임베드되지 않아 글리프만 남은 경우입니다. 이때는 글자 수가 많아도 쓸 수 없습니다.
+        한글 문서에서 <span class="path">korean_ratio &lt; 0.3</span>이면 일단 의심하세요.
+      </p>
+
+      <h2 id="m2-03">2.3 텍스트 추출과 품질 측정</h2>
+
+      <p>
+        텍스트 PDF에서도 <em>레이아웃</em>이 문제입니다. 시험지처럼 2단 조판이면 줄 순서가 뒤섞여
+        “왼쪽 단 마지막 줄 → 오른쪽 단 첫 줄”이 아니라 문장 중간이 끊깁니다. <span class="path">pdfplumber</span>의
+        레이아웃 보존 옵션을 쓰면 훨씬 낫습니다.
+      </p>
+
+<pre data-lang="python"><code># pip install pdfplumber
+import pdfplumber
+
+def extract_pages(path: str) -&gt; list[str]:
+    pages = []
+    with pdfplumber.open(path) as pdf:
+        for page in pdf.pages:
+            # layout=True: 공백으로 위치를 살려 단(column) 구조를 흉내 낸다
+            text = page.extract_text(layout=True, x_tolerance=2, y_tolerance=3) or ""
+            pages.append(text)
+    return pages</code></pre>
+
+      <p>
+        뽑은 텍스트는 <strong>반드시 점수를 매겨</strong> 저장 여부를 결정합니다. “일단 다 저장하고 나중에 보자”는
+        나중에 오지 않습니다. 아래 지표면 충분합니다.
+      </p>
+
+<pre data-lang="python"><code>import re, unicodedata
+from statistics import mean
+
+BAD_PATTERN = re.compile(r"[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f]")
+CENTER_DOT = "·ㆍ•⋅"
+
+def text_quality(text: str) -&gt; dict:
+    flat = unicodedata.normalize("NFKC", text)
+    chars = [c for c in flat if c.strip()]
+    if not chars:
+        return {"score": 0.0, "note": "빈 텍스트"}
+
+    korean = sum(1 for c in chars if "가" &lt;= c &lt;= "힣")
+    bad = len(BAD_PATTERN.findall(flat))
+    # 줄이 2~4자짜리로 쪼개지는 것은 단(column) 뒤섞임의 대표 증상
+    lines = [ln for ln in flat.splitlines() if ln.strip()]
+    stub = sum(1 for ln in lines if len(ln.strip()) &lt;= 4) / max(1, len(lines))
+    dup_space = len(re.findall(r"\S {3,}\S", flat)) / max(1, len(lines))
+
+    score = 1.0
+    score -= min(0.5, bad / max(1, len(chars)) * 20)
+    score -= min(0.3, max(0, 0.45 - korean / len(chars)) * 1.5)
+    score -= min(0.2, max(0, stub - 0.15) * 0.8)
+    score -= min(0.15, max(0, dup_space - 0.25) * 0.5)
+    return {
+        "score": round(max(0.0, score), 2),
+        "korean_ratio": round(korean / len(chars), 3),
+        "bad_chars": bad,
+        "stub_line_ratio": round(stub, 3),
+    }
+
+def route(pages: list[str], threshold: float = 0.65) -&gt; str:
+    scores = [text_quality(p)["score"] for p in pages if p.strip()]
+    if not scores:
+        return "ocr"
+    return "ok" if mean(scores) &gt;= threshold else "ocr_or_vision"</code></pre>
+
+      <div class="callout tip">
+        <span class="callout-title">이 점수를 버리지 마세요</span>
+        <p>
+          품질 점수를 <span class="path">report.json</span>에 남겨 두면, 나중에 “검색이 안 되는 문항 300개”의 목록을
+          <strong>품질 점수 하위 300개</strong>와 대조해 볼 수 있습니다. 전처리 품질과 검색 성능의 상관을 직접 확인하는
+          가장 값싼 방법입니다.
+        </p>
+      </div>
+
+      <h2 id="m2-04">2.4 표 추출과 병합 셀 정규화</h2>
+
+      <p>
+        교육과정 문서는 표가 생명입니다. 성취기준·핵심 개념·평가 방법이 대부분 표 안에 있습니다.
+        그리고 표는 마크다운으로 옮기는 순간 <strong>가장 많이 망가집니다.</strong> 이유는 두 가지입니다.
+      </p>
+      <ol>
+        <li>병합 셀(가로·세로 병합)이 마크다운에 존재하지 않습니다. 빈 셀이 되어 <em>의미가 사라집니다</em>.</li>
+        <li>셀 안의 줄바꿈과 <span class="path">|</span> 문자가 표 구조를 깨뜨립니다.</li>
+      </ol>
+
+<pre data-lang="python"><code>import pdfplumber
+
+TABLE_SETTINGS = {
+    "vertical_strategy": "lines",      # 표에 괘선이 있으면 lines가 정확
+    "horizontal_strategy": "lines",
+    "intersection_tolerance": 3,
+    "snap_tolerance": 3,
+}
+
+def extract_tables(path: str, page_no: int) -&gt; list[list[list[str | None]]]:
+    with pdfplumber.open(path) as pdf:
+        page = pdf.pages[page_no]
+        tables = page.extract_tables(table_settings=TABLE_SETTINGS)
+        # 셀 정리: None → None 유지(병합 추적용), 문자열은 공백 정돈
+        out = []
+        for t in tables:
+            out.append([[(c.strip() if isinstance(c, str) else c) for c in row] for row in t])
+        return out</code></pre>
+
+      <p>이제 병합을 <strong>정보 손실 없이</strong> 마크다운으로 옮기는 방법입니다. 두 가지 전략이 있습니다.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>전략</th><th>결과</th><th>쓸 곳</th></tr></thead>
+          <tbody>
+            <tr><td>값 채우기(fill)</td><td>병합된 셀의 값을 아래·오른쪽으로 복사</td><td>검색·임베딩용. 각 행이 독립적으로 이해된다</td></tr>
+            <tr><td>병합 표시(merge)</td><td>첫 셀만 값, 나머지는 <span class="path">↕</span>·<span class="path">↔</span> 표시</td><td>사람이 읽는 단권화·빈칸노트. 원래 모양을 보존</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        <span class="path">imgo-qbank</span>의 교육과정 조판은 <strong>병합 표시</strong> 쪽이 필요하고,
+        RAG 인덱스는 <strong>값 채우기</strong>가 유리합니다. 그래서 표를 두 벌로 만들거나, 한쪽에서 다른 쪽을 생성합니다.
+        아래는 둘 다 만드는 함수입니다.
+      </p>
+
+<pre data-lang="python"><code>def normalize_grid(rows: list[list[str | None]], mode: str = "fill") -&gt; list[list[str]]:
+    """None(병합으로 비어 있는 셀)을 처리한다.
+    fill: 위/왼쪽 값을 복사해 모든 행을 독립적으로 만든다.
+    merge: 첫 셀만 값, 나머지는 ↕ / ↔ 로 표시한다.
+    """
+    grid = [[("" if c is None else str(c)) for c in row] for row in rows]
+    height = len(grid)
+    width = max((len(r) for r in grid), default=0)
+    for r in grid:
+        r.extend([""] * (width - len(r)))
+
+    for col in range(width):
+        anchor = ""
+        for row in range(height):
+            cell = grid[row][col]
+            if cell.strip():
+                anchor = cell
+                continue
+            if mode == "fill":
+                grid[row][col] = anchor            # 세로 병합 → 위 값
+            else:
+                grid[row][col] = "↕" if anchor else ""
+    return grid
+
+def to_markdown(rows: list[list[str]]) -&gt; str:
+    def cell(s: str) -&gt; str:
+        return s.replace("|", "\\|").replace("\n", "&lt;br&gt;").strip()
+
+    if not rows:
+        return ""
+    width = max(len(r) for r in rows)
+    head = rows[0] + [""] * (width - len(rows[0]))
+    lines = ["| " + " | ".join(cell(c) for c in head) + " |",
+             "| " + " | ".join(["---"] * width) + " |"]
+    for r in rows[1:]:
+        r = r + [""] * (width - len(r))
+        lines.append("| " + " | ".join(cell(c) for c in r) + " |")
+    return "\n".join(lines)</code></pre>
+
+      <div class="callout warn">
+        <span class="callout-title">표의 첫 행이 헤더가 아닐 때가 많습니다</span>
+        <p>
+          시험지·교육과정 표는 첫 행이 “구분 / 내용 / 비고”처럼 진짜 헤더인 경우도 있지만,
+          “3. 교수·학습 및 평가” 같은 <em>제목 행</em>이 먼저 오는 경우가 더 많습니다.
+          무조건 첫 행을 헤더로 쓰면 표가 어색해집니다. 헤더 후보를 <strong>사람이 3초에 판단</strong>할 수 있게
+          추출 결과 앞에 페이지 번호와 원본 이미지 경로를 붙여 두세요. 검수가 빨라집니다.
+        </p>
+      </div>
+
+      <h2 id="m2-05">2.5 스캔 PDF OCR</h2>
+
+      <p>
+        OCR은 “글자를 읽는 일”이라기보다 <strong>“글자를 복원하는 일”</strong>입니다. 한글 OCR은 띄어쓰기와
+        가운데점(<span class="path">·</span>), 숫자와 유사 글자(<span class="path">1</span>/<span class="path">l</span>,
+        <span class="path">0</span>/<span class="path">O</span>)에서 자주 틀립니다. 그래서 <em>후처리 규칙</em>이 절반입니다.
+      </p>
+
+<pre data-lang="bash"><code># 코랩/우분투 기준
+apt-get install -y tesseract-ocr tesseract-ocr-kor
+pip install pytesseract pillow pdf2image
+apt-get install -y poppler-utils     # pdf2image가 쓰는 pdftoppm</code></pre>
+
+<pre data-lang="python"><code>import pytesseract
+from PIL import Image, ImageOps
+from pdf2image import convert_from_path
+
+def ocr_page(image: Image.Image, dpi_scale: int = 2) -&gt; str:
+    # 1) 회색조 + 대비 정상화: 스캔본의 누런 배경을 없앤다
+    img = ImageOps.grayscale(image)
+    img = ImageOps.autocontrast(img)
+    # 2) 확대: 작은 글씨는 2배로 키울 때 인식률이 크게 오른다
+    img = img.resize((img.width * dpi_scale, img.height * dpi_scale), Image.LANCZOS)
+    # 3) psm 6: "하나의 균일한 텍스트 블록" 가정 — 시험지 본문에 무난
+    config = "--oem 3 --psm 6 -l kor+eng"
+    return pytesseract.image_to_string(img, config=config)
+
+def ocr_pdf(path: str, dpi: int = 200) -&gt; list[str]:
+    pages = convert_from_path(path, dpi=dpi)
+    return [ocr_page(p) for p in pages]</code></pre>
+
+      <h3>OCR 후처리: 규칙 몇 줄이 인식률을 바꾼다</h3>
+      <p>
+        아래 규칙은 한국어 시험지에서 자주 나오는 패턴만 모은 것입니다. 문항 번호 체계(<span class="path">1)</span>,
+        <span class="path">(가)</span>, <span class="path">Q08</span>)를 정규화하면 나중에 절 분리가 쉬워집니다.
+      </p>
+
+<pre data-lang="python"><code>import re
+
+FIXES = [
+    (r"(?&lt;=\d)[lI](?=\d)", "1"),                 # 202l → 2021
+    (r"(?&lt;=\d)[Oo](?=\d)", "0"),                 # 2O2O → 2020
+    (r"[·ㆍ•⋅‧]", "·"),                          # 가운데점 통일
+    (r"성취\s*기준", "성취기준"),                  # 띄어쓰기 붙이기
+    (r"교수\s*[·ㆍ]\s*학습", "교수·학습"),
+    (r"^\s*[①-⑳]\s*", lambda m: m.group(0)),      # 원문자 유지
+    (r"[ \t]{2,}", " "),
+]
+
+def clean_ocr(text: str) -&gt; str:
+    for pat, rep in FIXES:
+        text = re.sub(pat, rep, text, flags=re.M)
+    # 소문항 번호 앞에 줄바꿈 보장: "1) " 이 문장 중간에 붙어 있으면 분리
+    text = re.sub(r"(?&lt;!^)\s(\d\))", r"\n\1", text, flags=re.M)
+    return text.strip()</code></pre>
+
+      <div class="callout danger">
+        <span class="callout-title">OCR 결과를 곧이곧대로 믿으면 안 되는 이유</span>
+        <p>
+          OCR은 <strong>숫자를 바꿔 놓습니다.</strong> 배점 4점이 1점이 되고, 2019가 20l9가 됩니다.
+          문항·배점·연도가 들어가는 frontmatter는 <em>반드시 원본 이미지를 보며</em> 확인하세요.
+          자동화가 잘하는 일(본문 텍스트)과 사람이 잘하는 일(숫자 확인)을 구분하는 것이 이 단계의 핵심입니다.
+          그래서 우리는 OCR 결과에 <span class="path">needs_manual_verification: "true"</span>를 기본으로 답니다(2.10).
+        </p>
+      </div>
+
+      <h3>OCR vs 비전 모델: 언제 무엇을 쓰나</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th>OCR (tesseract)</th><th>비전 모델</th></tr></thead>
+          <tbody>
+            <tr><td>비용</td><td>무료·로컬</td><td>호출당 과금</td></tr>
+            <tr><td>속도</td><td>빠름(페이지당 1~3초)</td><td>느림(수 초)</td></tr>
+            <tr><td>표·도식</td><td>거의 못 읽음</td><td>구조까지 읽음</td></tr>
+            <tr><td>한글 정확도</td><td>보통. 후처리 필요</td><td>높음. 맥락 보정까지</td></tr>
+            <tr><td>추천 조합</td><td colspan="2">본문은 OCR로 대량 처리 → <strong>표·도식·품질 낮은 페이지만 비전 모델로</strong> 재처리</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="m2-06">2.6 이미지·도식: 비전 모델에 넣는 법</h2>
+
+      <p>
+        시험지의 절반은 그림입니다. 표, 그래프, 실험 장치도, 악보, 체육 동작 그림…. 텍스트만 뽑아서는
+        문항이 성립하지 않습니다. 다행히 지금의 비전 모델은 이런 그림을 꽤 잘 읽습니다.
+        다만 <strong>넣는 방식</strong>이 결과를 좌우합니다.
+      </p>
+
+<pre data-lang="python"><code>import base64, io, pathlib
+from PIL import Image
+
+MEDIA = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+         ".webp": "image/webp", ".gif": "image/gif"}
+
+def prepare_image(path: str, max_edge: int = 1568, quality: int = 88) -&gt; tuple[str, str]:
+    """긴 변을 max_edge로 줄이고 JPEG로 정규화한다. (base64, media_type) 반환."""
+    img = Image.open(path)
+    img = img.convert("RGB") if img.mode not in ("RGB", "L") else img
+    w, h = img.size
+    scale = min(1.0, max_edge / max(w, h))
+    if scale &lt; 1.0:
+        img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=quality, optimize=True)
+    return base64.standard_b64encode(buf.getvalue()).decode("ascii"), "image/jpeg"
+
+def image_block(path: str) -&gt; dict:
+    b64, mt = prepare_image(path)
+    return {"type": "image", "source": {"type": "base64", "media_type": mt, "data": b64}}
+
+resp = client.messages.create(
+    model=MODEL,
+    max_tokens=2000,
+    temperature=0,
+    messages=[{
+        "role": "user",
+        "content": [
+            image_block("images/과학_2019_05_source.jpg"),
+            {"type": "text", "text": "&lt;task&gt;이 이미지의 표를 마크다운으로 옮기시오.&lt;/task&gt;"},
+        ],
+    }],
+)</code></pre>
+
+      <p>실전에서 효과가 큰 순서대로 네 가지 팁을 적습니다.</p>
+
+      <ol>
+        <li>
+          <strong>해상도는 “읽힐 만큼만”.</strong> 이미지는 크기에 비례해 토큰을 먹습니다(대략 가로×세로/750 수준).
+          너무 작으면 글씨를 놓치고, 너무 크면 비용만 늘어납니다. 긴 변 1,500px 근처가 균형점입니다.
+        </li>
+        <li>
+          <strong>작은 글씨는 크롭해서 따로.</strong> 전체 페이지를 넣고 “표를 읽어라” 하면 작은 셀을 흘립니다.
+          먼저 전체를 넣어 <em>표의 대략적 위치</em>를 물고, 그 영역만 잘라 다시 넣으세요.
+        </li>
+        <li>
+          <strong>기울기를 먼저 보정합니다.</strong> 스캔본이 1~2도만 기울어도 표의 행이 섞입니다.
+          <span class="path">deskew</span> 라이브러리나 간단한 회전 보정으로 먼저 바로놓으세요.
+        </li>
+        <li>
+          <strong>읽지 못한 것을 말하게 합니다.</strong> “확실하지 않은 셀은 비우고 이유를 적으시오”가 없으면
+          모델은 <em>그럴듯한 글자</em>를 채워 넣습니다. 이건 환각의 시각 버전입니다.
+        </li>
+      </ol>
+
+      <div class="callout warn">
+        <span class="callout-title">OCR과 비전 모델을 교차 검증하세요</span>
+        <p>
+          같은 페이지를 둘 다 돌려 <strong>숫자만 비교</strong>하면 오탈자를 매우 잘 잡아냅니다.
+          OCR: “배점 4점”, 비전: “배점 4점” → 통과. 하나가 1점이면 사람이 본다.
+          텍스트 전체를 비교하면 표현 차이 때문에 모두 불일치가 나므로, <em>숫자·연도·문항번호만</em> 뽑아 비교하는 것이 요령입니다.
+        </p>
+      </div>
+
+      <h2 id="m2-07">2.7 도표 판독 프롬프트</h2>
+
+      <p>
+        그림을 읽히는 프롬프트도 1장의 원칙을 그대로 따릅니다. <strong>출력 형식을 고정하고, 모르는 것을 말하게 하고,
+        코드로 검증</strong>합니다. 표 판독에는 검증할 거리가 하나 더 있습니다 — <em>행·열 개수</em>입니다.
+      </p>
+
+<pre data-lang="text"><code>&lt;task&gt;
+이미지의 표를 마크다운 표로 옮기시오. 표가 여러 개면 순서대로 &lt;table index="1"&gt; … 로 나누시오.
+&lt;/task&gt;
+
+&lt;rules&gt;
+1. 보이는 글자만 쓴다. 추측해서 채우지 않는다.
+2. 병합으로 비어 있는 셀은 빈 칸으로 두고, &lt;merges&gt;에 “3행 2열~3열 병합”처럼 적는다.
+3. 셀 안의 줄바꿈은 &lt;br&gt;로 쓴다. 셀 안의 | 는 \| 로 이스케이프한다.
+4. 읽을 수 없는 글자는 “□”로 쓰고, 해당 위치를 &lt;uncertain&gt;에 적는다.
+5. 숫자(배점·연도·문항번호)는 특히 주의해 다시 한 번 확인한 뒤 쓴다.
+&lt;/rules&gt;
+
+&lt;output_format&gt;
+&lt;tables&gt;
+  &lt;table index="1"&gt;
+    &lt;markdown&gt;| 라벨 | 핵심 내용 | …&lt;/markdown&gt;
+    &lt;rows&gt;4&lt;/rows&gt;
+    &lt;cols&gt;3&lt;/cols&gt;
+    &lt;merges&gt;…&lt;/merges&gt;
+    &lt;uncertain&gt;…&lt;/uncertain&gt;
+  &lt;/table&gt;
+&lt;/tables&gt;
+&lt;/output_format&gt;</code></pre>
+
+      <p>
+        <span class="path">&lt;rows&gt;</span>·<span class="path">&lt;cols&gt;</span>를 같이 받는 이유가 핵심입니다.
+        모델이 “4행 3열”이라고 선언했는데 실제 마크다운은 5행이면, 그 표는 믿지 않고 다시 시도할 수 있습니다.
+        모델의 자기 선언을 <strong>검증의 씨앗</strong>으로 쓰는 것입니다.
+      </p>
+
+<pre data-lang="python"><code>import re
+
+def parse_tables(raw: str) -&gt; list[dict]:
+    out = []
+    for m in re.finditer(r"&lt;table index=\"(\d+)\"&gt;(.*?)&lt;/table&gt;", raw, re.S):
+        block = m.group(2)
+        md = re.search(r"&lt;markdown&gt;(.*?)&lt;/markdown&gt;", block, re.S)
+        rows = re.search(r"&lt;rows&gt;\s*(\d+)", block)
+        cols = re.search(r"&lt;cols&gt;\s*(\d+)", block)
+        out.append({
+            "index": int(m.group(1)),
+            "markdown": (md.group(1).strip() if md else ""),
+            "rows": int(rows.group(1)) if rows else None,
+            "cols": int(cols.group(1)) if cols else None,
+        })
+    return out
+
+def table_is_consistent(t: dict) -&gt; tuple[bool, str]:
+    lines = [ln for ln in t["markdown"].splitlines() if ln.strip().startswith("|")]
+    if not lines:
+        return False, "표 본문 없음"
+    ncols = lines[0].count("|") - 1
+    for i, ln in enumerate(lines):
+        if ln.count("|") - 1 != ncols:
+            return False, f"{i+1}번째 행의 열 수 불일치"
+    if t["cols"] and ncols != t["cols"]:
+        return False, f"선언한 열수 {t['cols']} ≠ 실제 {ncols}"
+    if t["rows"] and len(lines) - 2 != t["rows"]:      # 헤더 + 구분행 제외
+        return False, f"선언한 행수 {t['rows']} ≠ 실제 {len(lines)-2}"
+    return True, "ok"</code></pre>
+
+      <div class="callout imgo">
+        <span class="callout-title">💡 교육과정 ‘1분 회독표’가 바로 이 모양입니다</span>
+        <p>
+          <span class="path">imgo-node</span>의 교육과정 노트에는 <span class="path">## 1분 회독표</span> 아래에
+          <span class="path">| 라벨 | 핵심 내용 |</span> 형태의 표가 들어가고, 그 아래에 <span class="path">## 교육과정 상세</span>로
+          원문이 붙습니다. 즉 <strong>표 = 요약본, 본문 = 원문</strong>입니다.
+          표 판독이 틀리면 단권화·kidi 빈칸노트가 통째로 틀어지므로, 표는 비전 모델 + 개수 검증까지 해서
+          원문 대조를 거치는 편이 안전합니다. 그리고 표의 <span class="path">**강조**</span>와
+          <span class="path">==형광==</span> 표시는 함부로 자동 생성하지 마세요. 그 표시가 곧 학습 우선순위입니다.
+        </p>
+      </div>
+
+      <h2 id="m2-08">2.8 HWP·HWPX 다루기</h2>
+
+      <p>
+        한국 자료는 여기서 반드시 막힙니다. <span class="path">.hwp</span>는 오래된 바이너리 포맷이고,
+        <span class="path">.hwpx</span>는 ZIP + XML입니다. 후자가 훨씬 다루기 쉽습니다.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>확장자</th><th>구조</th><th>도구</th><th>결과 품질</th></tr></thead>
+          <tbody>
+            <tr><td><span class="path">.hwpx</span></td><td>ZIP 컨테이너 + XML(본문·표)</td><td>표준 라이브러리(zipfile, xml)</td><td>좋음 — 문단·표 구조 보존 가능</td></tr>
+            <tr><td><span class="path">.hwp</span></td><td>바이너리(OLE) + 압축 스트림</td><td>pyhwp(<span class="path">hwp5txt</span>)</td><td>본문은 읽힘, 표는 대개 깨짐</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+<pre data-lang="python"><code>import zipfile, re
+import xml.etree.ElementTree as ET
+
+def hwpx_to_text(path: str) -&gt; str:
+    """hwpx 본문 텍스트를 문단 단위로 뽑는다."""
+    ns = {"hp": "http://www.hancom.co.kr/hwpml/2011/paragraph"}
+    chunks = []
+    with zipfile.ZipFile(path) as z:
+        sections = sorted(n for n in z.namelist() if re.match(r"Contents/section\d+\.xml$", n))
+        for name in sections:
+            root = ET.fromstring(z.read(name))
+            # 문단 단위로 모아야 줄바꿈이 살아난다
+            for p in root.iter("{%s}p" % ns["hp"]):
+                text = "".join(t.text or "" for t in p.iter("{%s}t" % ns["hp"]))
+                if text.strip():
+                    chunks.append(text.strip())
+    return "\n".join(chunks)
+
+def hwpx_tables(path: str) -&gt; list[list[list[str]]]:
+    """표만 뽑아 2차원 배열로. 셀 병합 정보(속성)는 별도로 보존한다."""
+    ns = {"hp": "http://www.hancom.co.kr/hwpml/2011/paragraph"}
+    tables = []
+    with zipfile.ZipFile(path) as z:
+        for name in sorted(n for n in z.namelist() if re.match(r"Contents/section\d+\.xml$", n)):
+            root = ET.fromstring(z.read(name))
+            for tbl in root.iter("{%s}tbl" % ns["hp"]):
+                grid = []
+                for tr in tbl.iter("{%s}tr" % ns["hp"]):
+                    row = []
+                    for tc in tr.iter("{%s}tc" % ns["hp"]):
+                        cell = "".join(t.text or "" for t in tc.iter("{%s}t" % ns["hp"])).strip()
+                        span = tc.find("hp:cellSpan", ns)      # 병합 정보는 자식 요소에 있다
+                        rs = span.get("rowSpan") if span is not None else None
+                        cs = span.get("colSpan") if span is not None else None
+                        marks = (" [rs%s]" % rs if rs and rs != "1" else "") + \
+                                (" [cs%s]" % cs if cs and cs != "1" else "")
+                        row.append(cell + marks)
+                    grid.append(row)
+                tables.append(grid)
+    return tables</code></pre>
+
+<pre data-lang="bash"><code># .hwp (바이너리) — pyhwp가 제공하는 CLI
+pip install pyhwp
+hwp5txt --output extracted.txt 원본.hwp</code></pre>
+
+      <div class="callout warn">
+        <span class="callout-title">HWP는 ‘본문만’ 뽑고 표는 사람이 보세요</span>
+        <p>
+          <span class="path">.hwp</span>에서 표를 자동 복원하려는 시도는 시간 대비 효과가 나쁩니다.
+          본문 텍스트를 뽑아 <strong>문항 발문·해설의 초안</strong>으로 쓰고, 표는 원본을 열어 옮기는 편이 빠릅니다.
+          이럴 때 표준 작업 순서는 “① 원본을 PDF로 내보내기 → ② 2.4 표 추출 → ③ 비전 모델 검증”입니다.
+          한글에서 PDF로 내보낼 때 <em>“쪽 맞춤” 옵션을 끄는 것</em>이 중요합니다 — 표가 페이지 경계에서 찢어지지 않습니다.
+        </p>
+      </div>
+
+      <h2 id="m2-09">2.9 마크다운 정규화와 frontmatter 설계</h2>
+
+      <p>
+        이제 재료를 <span class="path">imgo-node</span> 스키마로 조립합니다. 기존 파일을 열어 보면
+        계열이 세 가지로 나뉘는 것을 알 수 있습니다. <strong>이 표를 외우면 나머지는 응용입니다.</strong>
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>계열</th><th><span class="path">node_kind</span></th><th>필수에 가까운 frontmatter</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>교육과정 노트</td><td><span class="path">curriculum_doc</span></td>
+              <td><span class="path">id, scope, canonical, subject, parent</span></td>
+            </tr>
+            <tr>
+              <td>기출 문항</td><td><span class="path">qbank</span></td>
+              <td><span class="path">id, subject, year, question, points, question_type, primary_node, node_ids[], node_title, tags[], source_page_image, publication_status</span></td>
+            </tr>
+            <tr>
+              <td>연습모의고사</td><td><span class="path">practice_mock_question</span></td>
+              <td><span class="path">id, provider, question_no, subject, primary_node, node_title, tags[]</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>여기에 <strong>검수용 필드</strong>가 붙습니다. 이 세 개가 자동화와 사람 사이의 경계입니다.</p>
+      <ul>
+        <li><span class="path">draft</span> — 아직 사람이 안 본 초안. 인쇄·배포 금지.</li>
+        <li><span class="path">needs_manual_verification</span> — 자동 추출했고 사람 확인이 필요.</li>
+        <li><span class="path">official_scoring_verified</span> — 공식 배점·정답이 확인됨.</li>
+      </ul>
+
+<pre data-lang="python"><code>import yaml
+from datetime import date
+
+def build_frontmatter(item: dict) -&gt; str:
+    """문항 dict → YAML frontmatter 블록. 키 순서를 고정해 diff를 읽기 쉽게 한다."""
+    fm = {
+        "id": item["id"],
+        "node_kind": "qbank",
+        "subject": item["subject"],
+        "year": item["year"],
+        "exam_kind": item.get("exam_kind", "기출"),
+        "question": item["question"],
+        "points": item.get("points"),
+        "question_type": item.get("question_type", "서술형"),
+        "primary_node": item.get("primary_node"),
+        "node_ids": item.get("node_ids", []),
+        "node_title": item.get("node_title"),
+        "node_path": item.get("node_path"),
+        "source_page_image": item.get("source_page_image"),
+        "mapping_confidence": item.get("mapping_confidence", "low"),
+        "publication_status": "internal_public",
+        "draft": "true",
+        "needs_manual_verification": "true",
+        "official_scoring_verified": "false",
+        "extracted_at": date.today().isoformat(),
+        "tags": item.get("tags", []),
+    }
+    fm = {k: v for k, v in fm.items() if v is not None}
+    body = yaml.safe_dump(fm, allow_unicode=True, sort_keys=False, default_flow_style=False)
+    return "---\n" + body + "---"</code></pre>
+
+      <div class="callout danger">
+        <span class="callout-title">YAML에서 반드시 지킬 것</span>
+        <ul style="margin-bottom:0">
+          <li><span class="path">allow_unicode=True</span> 없으면 한글이 <span class="path">\uacfc\ud559</span>처럼 나옵니다. 사람이 못 읽습니다.</li>
+          <li><strong>“true”를 문자열로.</strong> <span class="path">imgo-qbank</span>는 <span class="path">asBoolean("true")</span>로 읽으므로
+            실제 불리언 <span class="path">true</span>도 처리되지만, 기존 파일과 타입을 맞춰 두는 편이 안전합니다.</li>
+          <li><strong>콜론과 샵.</strong> 값에 <span class="path">“: ”</span> 또는 <span class="path"> #</span>이 있으면 따옴표로 감싸야 합니다. yaml이 알아서 해 주지만, 직접 문자열을 만들 때는 조심하세요.</li>
+          <li><strong>깨진 YAML도 본문은 살립니다.</strong> 기존 앱이 그렇게 동작하므로, 우리 파이프라인도 파싱 실패 시
+            <span class="path">draft</span>로 표시하고 계속 진행해야 합니다.</li>
+        </ul>
+      </div>
+
+      <h3>절 제목 표준화</h3>
+      <p>
+        원본의 “문제”, “문항”, “발문”, “📋 문제 본문”을 하나로 모읍니다. 이 매핑표를 코드에 넣어 두면
+        나중에 원본 형식이 늘어나도 한 줄만 추가하면 됩니다.
+      </p>
+
+<pre data-lang="python"><code>HEADING_MAP = {
+    "문제": "문제 본문", "문항": "문제 본문", "발문": "문제 본문",
+    "문제 본문": "문제 본문", "📋 문제 본문": "문제 본문",
+    "정답": "✅ 정답", "답안": "✅ 정답", "모범답안": "✅ 정답",
+    "해설": "📝 해설", "풀이": "📝 해설", "출제의도": "📝 해설",
+    "태깅": "태깅", "원문": "원문 전체면", "원문 전체면": "원문 전체면",
+}
+
+import re
+def normalize_headings(md: str) -&gt; str:
+    def repl(m):
+        raw = m.group(2).strip()
+        for key, std in HEADING_MAP.items():
+            if key in raw:
+                return f"## {std}"
+        return m.group(0)          # 모르는 제목은 그대로 둔다
+    return re.sub(r"^(##)\s+(.+)$", repl, md, flags=re.M)</code></pre>
+
+      <div class="callout imgo">
+        <span class="callout-title">💡 이미지 경로는 ‘그 md 기준 상대경로’</span>
+        <p>
+          <span class="path">imgo-qbank</span>는 그림을 <strong>md 파일이 있는 폴더 기준</strong>(<span class="path">images/...</span>)으로 연결합니다.
+          그래서 문서마다 <span class="path">&lt;문항 폴더&gt;/images/&lt;id&gt;_source.jpg</span> 구조를 유지해야 합니다.
+          파일명을 <span class="path">id</span>와 묶어 두면(예: <span class="path">과학_2019_05_source.jpg</span>)
+          나중에 파일을 옮기거나 중복 검사를 할 때 유리합니다. 절대경로·외부 URL은 쓰지 마세요 — 로컬 파일 서버에서 바로 깨집니다.
+        </p>
+      </div>
+
+      <h2 id="m2-10">2.10 검수 상태 기계</h2>
+
+      <p>
+        자동화에서 가장 위험한 순간은 <strong>“확신하지 못하는 것을 확정으로 표시하는 순간”</strong>입니다.
+        그래서 상태를 불리언 세 개로 나누고, <em>올리는 일은 사람만</em> 하도록 구조를 잡습니다.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>조건 조합</th><th>상태</th><th>화면 표시</th><th>인쇄</th></tr></thead>
+          <tbody>
+            <tr><td><span class="path">draft: "true"</span></td><td><span class="path">draft</span></td><td>임시</td><td>불가</td></tr>
+            <tr><td><span class="path">needs_manual_verification: "true"</span></td><td><span class="path">review</span></td><td>검수중</td><td>가능하지만 경고</td></tr>
+            <tr><td><span class="path">official_scoring_verified: "true"</span></td><td><span class="path">verified</span></td><td>확정</td><td>가능</td></tr>
+            <tr><td><span class="path">publication_status: "internal_public"</span> + 위 아님</td><td><span class="path">verified</span>에 준함</td><td>확정</td><td>가능</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>이 판정을 코드로 명시해 두면, 화면 배지와 인쇄 필터가 같은 기준을 씁니다.</p>
+
+<pre data-lang="python"><code>from dataclasses import dataclass
+
+def as_bool(v) -&gt; bool:
+    if isinstance(v, bool):
+        return v
+    return str(v).strip().lower() == "true"
+
+@dataclass
+class Status:
+    key: str        # draft | review | verified | unknown
+    label: str      # 임시 | 검수중 | 확정 | 미확인
+    note: str = ""
+
+def resolve_status(meta: dict) -&gt; Status:
+    if as_bool(meta.get("draft")):
+        return Status("draft", "임시", str(meta.get("draft_reason", "")))
+    if as_bool(meta.get("needs_manual_verification")):
+        return Status("review", "검수중")
+    if as_bool(meta.get("official_scoring_verified")):
+        return Status("verified", "확정")
+    if str(meta.get("publication_status", "")) == "internal_public":
+        return Status("verified", "확정")
+    return Status("unknown", "미확인")</code></pre>
+
+      <div class="callout danger">
+        <span class="callout-title">승격은 코드가 하지 않습니다</span>
+        <p>
+          <span class="path">draft → review</span>는 자동화가 해도 됩니다(추출이 끝났다는 뜻).
+          그러나 <span class="path">review → verified</span>는 <strong>사람이 원문과 대조한 뒤</strong>에만 일어나야 합니다.
+          코드에 가드를 넣어 두세요:
+        </p>
+<pre data-lang="python"><code>class PromotionForbidden(RuntimeError):
+    pass
+
+def promote_to_verified(meta: dict, *, by: str, basis: str) -&gt; dict:
+    """자동 파이프라인에서 호출하면 안 되는 함수. 사람 전용."""
+    if by == "pipeline":
+        raise PromotionForbidden("자동 파이프라인은 verified 로 승격할 수 없습니다")
+    if not basis:
+        raise PromotionForbidden("검수 근거(원문 대조 기록) 없이는 승격 불가")
+    meta = dict(meta)
+    meta.update({
+        "draft": "false",
+        "needs_manual_verification": "false",
+        "official_scoring_verified": "true",
+        "verified_by": by,
+        "verified_basis": basis,
+    })
+    return meta</code></pre>
+        <p style="margin-top:10px;margin-bottom:0">
+          이것은 규범이 아니라 <em>사고 방지 장치</em>입니다. “나중에 고치지 뭐”가 반복되면 8천 문항 중 몇 개가 틀린 채로
+          인쇄됩니다. 구조로 막는 편이 의지에 기대는 것보다 오래 갑니다.
+        </p>
+      </div>
+
+      <h2 id="m2-11">2.11 자동 린트로 품질 게이트 만들기</h2>
+
+      <p>
+        사람이 읽기 전에 기계가 잡을 수 있는 오류를 다 잡습니다. 목표는 <strong>“사람이 볼 필요가 없는 것”을 걸러내는 것</strong>입니다.
+        린트는 판단하지 않습니다 — <em>빠졌는지</em>만 봅니다.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>검사</th><th>룰</th><th>등급</th></tr></thead>
+          <tbody>
+            <tr><td>필수 필드</td><td><span class="path">id, subject, year, question, primary_node</span> 존재</td><td>error</td></tr>
+            <tr><td>id 규칙</td><td><span class="path">&lt;과목&gt;_&lt;연도&gt;_&lt;번호&gt;</span> 또는 <span class="path">pm-*</span></td><td>error</td></tr>
+            <tr><td>절 존재</td><td><span class="path">## 문제 본문</span>과 <span class="path">## 정답</span> 또는 <span class="path">## 해설</span></td><td>error</td></tr>
+            <tr><td>본문 길이</td><td>50자 이상</td><td>warn</td></tr>
+            <tr><td>이미지 경로</td><td><span class="path">source_page_image</span> 파일이 실제로 있는가</td><td>error</td></tr>
+            <tr><td>이미지 상대경로</td><td><span class="path">/</span>로 시작하거나 <span class="path">http</span>로 시작하면 경고</td><td>warn</td></tr>
+            <tr><td>배점 합</td><td>소문항 배점 합 = <span class="path">points</span></td><td>warn</td></tr>
+            <tr><td>소문항 번호</td><td>1), 2), 3) … 연속성</td><td>warn</td></tr>
+            <tr><td>금지 문자열</td><td><span class="path">TODO</span>, <span class="path">□</span>, <span class="path">???</span>가 남아 있는가</td><td>error</td></tr>
+            <tr><td>중복 id</td><td>저장소 전체에서 id 중복</td><td>error</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+<pre data-lang="python"><code>import re
+from pathlib import Path
+
+ID_PATTERN = re.compile(r"^(?:pm-[a-z0-9-]+|[가-힣]+_\d{4}_\d{2})$")
+CIRCLED = "①②③④⑤⑥⑦⑧⑨⑩"
+
+def lint_item(meta: dict, body: str, base_dir: Path) -&gt; list[tuple[str, str, str]]:
+    """(grade, code, message) 목록 반환. grade: error | warn"""
+    issues = []
+
+    for k in ("id", "subject", "question", "primary_node"):
+        if not meta.get(k):
+            issues.append(("error", "MISSING_FIELD", f"필수 필드 누락: {k}"))
+
+    if meta.get("id") and not ID_PATTERN.match(meta["id"]):
+        issues.append(("error", "BAD_ID", f"id 규칙 위반: {meta['id']}"))
+
+    for name in ("문제 본문",):
+        if name not in body:
+            issues.append(("error", "NO_SECTION", f"'{name}' 절이 없습니다"))
+    if not ("정답" in body or "해설" in body):
+        issues.append(("error", "NO_ANSWER", "정답·해설 절이 모두 없습니다"))
+
+    stem = re.search(r"##\s*.*문제 본문[^\n]*\n([\s\S]*?)(?=^##\s|\Z)", body, re.M)
+    stem_text = stem.group(1) if stem else ""
+    if len(stem_text.strip()) &lt; 50:
+        issues.append(("warn", "SHORT_STEM", f"본문이 짧습니다({len(stem_text.strip())}자)"))
+
+    img = meta.get("source_page_image")
+    if img:
+        if str(img).startswith(("/", "http")):
+            issues.append(("warn", "ABS_IMAGE_PATH", f"상대경로가 아닙니다: {img}"))
+        elif not (base_dir / img).exists():
+            issues.append(("error", "MISSING_IMAGE", f"이미지 파일 없음: {img}"))
+
+    for token in ("TODO", "???", "□"):
+        if token in body:
+            issues.append(("error", "PLACEHOLDER", f"미완성 표시가 남아 있습니다: {token}"))
+
+    # 소문항 번호 연속성
+    subs = sorted(int(m) for m in re.findall(r"^\s*(\d)\)\s", stem_text, re.M))
+    if subs and subs != list(range(1, len(subs) + 1)):
+        issues.append(("warn", "SUB_NO_GAP", f"소문항 번호 불연속: {subs}"))
+
+    return issues
+
+def gate(issues: list) -&gt; str:
+    if any(g == "error" for g, _, _ in issues):
+        return "fail"
+    if any(g == "warn" for g, _, _ in issues):
+        return "review"
+    return "pass"</code></pre>
+
+      <div class="callout tip">
+        <span class="callout-title">린트는 CI에서 돌리세요</span>
+        <p>
+          로컬에서만 돌리면 언젠가 빼먹습니다. 저장소에 <span class="path">tools/lint_questions.py</span>를 두고,
+          커밋 전(<span class="path">pre-commit</span>) 또는 PR에서 돌리면 오염을 그 자리에서 막습니다.
+          기존 8천 문항에 한 번 돌려 <strong>baseline</strong>을 만들고, “새로 생긴 error만 실패”로 설정하는 것이 현실적입니다.
+          다 고치고 시작하면 영원히 시작 못 합니다.
+        </p>
+      </div>
+
+      <h2 id="m2-12">2.12 전체 파이프라인 코드</h2>
+
+      <p>
+        앞의 조각을 하나로 묶습니다. 핵심은 <strong>모든 단계가 결과를 남기는 것</strong>입니다.
+        나중에 “왜 이 문항만 깨졌지?”를 추적할 수 있어야 합니다.
+      </p>
+
+<pre data-lang="python"><code>import json
+from dataclasses import asdict
+from pathlib import Path
+
+from pypdf import PdfReader
+
+OUT = Path("out")
+(OUT / "md").mkdir(parents=True, exist_ok=True)
+
+
+def convert_pdf(pdf_path: Path, subject: str, year: int) -&gt; dict:
+    """PDF 1개 → (md 파일, report 항목)."""
+    out_dir = OUT / "md" / subject
+    (out_dir / "images").mkdir(parents=True, exist_ok=True)
+    report = {"src": str(pdf_path), "subject": subject, "year": year, "pages": []}
+
+    prof = profile_pdf(str(pdf_path))
+    report["profile"] = asdict(prof)
+
+    reader = PdfReader(str(pdf_path))
+    page_images = convert_from_path(str(pdf_path), dpi=200)   # 스캔 페이지 렌더용
+
+    for i, page in enumerate(reader.pages):
+        # 1) 페이지별 판정 — 'mixed'를 한 번에 처리하지 않는다
+        t = page.extract_text() or ""
+        kind = "text" if len(t.strip()) &gt; 200 else "scan"
+
+        if kind == "text":
+            md = normalize_headings(clean_ocr(t))      # 조판 정돈은 OCR 함수 재사용
+            via = "text"
+        else:
+            md = normalize_headings(clean_ocr(ocr_page(page_images[i])))
+            via = "ocr"
+
+        q = {
+            "id": f"{subject}_{year}_{i+1:02d}",
+            "subject": subject,
+            "year": year,
+            "question": i + 1,
+            "question_type": "서술형",
+            "primary_node": None,          # 노드 매핑은 별도 단계
+            "source_page_image": f"images/{subject}_{year}_{i+1:02d}_source.jpg",
+            "tags": [],
+            **{"draft": "true", "needs_manual_verification": "true"},
+        }
+
+        fm = build_frontmatter(q)
+        title = f"# {year}년 {subject} {i+1}번\n\n![원본]({q['source_page_image']})\n\n## 원문 전체면\n"
+        doc = f"{fm}\n{title}\n{md}\n"
+
+        issues = lint_item(q, md, out_dir)
+        report["pages"].append({
+            "page": i + 1, "via": via, "chars": len(md),
+            "quality": text_quality(md), "lint": issues,
+        })
+
+        if gate(issues) != "fail":
+            (out_dir / f"{subject}_{year}_{i+1:02d}.md").write_text(doc, encoding="utf-8")
+
+    return report
+
+
+def run(root: Path) -&gt; None:
+    reports = []
+    for pdf in sorted(root.rglob("*.pdf")):
+        # 폴더명에서 과목·연도를 추출하는 규칙은 자료마다 다르다 — 맞춰 고치세요
+        subject = pdf.parent.name
+        year = int(re.search(r"(20\d{2})", pdf.name).group(1)) if re.search(r"20\d{2}", pdf.name) else 0
+        try:
+            reports.append(convert_pdf(pdf, subject, year))
+        except Exception as e:
+            reports.append({"src": str(pdf), "error": repr(e)})
+    (OUT / "report.json").write_text(json.dumps(reports, ensure_ascii=False, indent=2), encoding="utf-8")
+    total = sum(len(r.get("pages", [])) for r in reports)
+    failed = sum(1 for r in reports if r.get("error"))
+    print(f"완료: {len(reports)}개 파일, {total}쪽, 실패 {failed}" )</code></pre>
+
+      <div class="callout danger">
+        <span class="callout-title">위 코드의 의도적 구멍 두 개</span>
+        <p>
+          (1) <span class="path">primary_node</span>가 <span class="path">None</span>입니다. 노드 매핑은 <em>내용을 이해</em>해야 하는 일이라
+          전처리와 분리했습니다. 8천 문항을 한 번에 매핑하면 오류가 대량으로 섞입니다. 먼저 과목·단원 수준으로
+          <span class="path">low</span> 신뢰도로 붙이고, 검수로 올리는 편이 안전합니다.
+          (2) <span class="path">page.extract_text()</span>는 pdfplumber와 결과가 다릅니다. 품질 점수가 낮게 나오면
+          pdfplumber 경로로 바꾸세요. 두 라이브러리를 섞어 쓰는 게 정상입니다.
+        </p>
+      </div>
+
+      <h2 id="m2-13">2.13 자가 점검</h2>
+
+      <div class="quiz">
+        <p class="quiz-q"><span class="qnum">Q1</span>스캔 PDF에 텍스트 추출을 걸었더니 결과가 빈 문자열이었다. 이 상태로 저장했을 때 가장 큰 문제는?</p>
+        <div class="quiz-opts">
+          <button class="quiz-opt" data-correct="false">파일 용량이 커진다</button>
+          <button class="quiz-opt" data-correct="true">빈 문항이 조용히 쌓여 검색에서 빠지고, 나중에 원인을 찾기 어려워진다</button>
+          <button class="quiz-opt" data-correct="false">YAML이 깨진다</button>
+          <button class="quiz-opt" data-correct="false">이미지 경로가 절대경로로 바뀐다</button>
+        </div>
+        <div class="quiz-why" hidden><p><strong>2.2~2.3.</strong> 조용한 오염이 가장 비쌉니다. 먼저 PDF를 텍스트/스캔으로 판별하고, 추출 후 품질 점수를 기록해 실패를 <em>지금</em> 보이게 만드세요.</p></div>
+      </div>
+
+      <div class="quiz">
+        <p class="quiz-q"><span class="qnum">Q2</span>병합 셀이 있는 표를 RAG용으로 만들 때 적절한 전략은?</p>
+        <div class="quiz-opts">
+          <button class="quiz-opt" data-correct="true">위/왼쪽 값을 복사해 모든 행을 독립적으로 만든다</button>
+          <button class="quiz-opt" data-correct="false">빈 셀을 그대로 둔다</button>
+          <button class="quiz-opt" data-correct="false">표를 이미지로만 저장한다</button>
+          <button class="quiz-opt" data-correct="false">모든 행을 한 셀로 합친다</button>
+        </div>
+        <div class="quiz-why" hidden><p><strong>2.4.</strong> 검색은 행 단위로 잘리므로, 각 행이 스스로 의미를 가져야 합니다. 사람이 읽는 조판은 반대로 <span class="path">↕</span> 표시를 쓰는 게 좋습니다.</p></div>
+      </div>
+
+      <div class="quiz">
+        <p class="quiz-q"><span class="qnum">Q3</span>자동 파이프라인이 <span class="path">needs_manual_verification</span>을 지우고 <span class="path">official_scoring_verified</span>로 바꾸면 안 되는 이유는?</p>
+        <div class="quiz-opts">
+          <button class="quiz-opt" data-correct="false">YAML 스펙 위반이다</button>
+          <button class="quiz-opt" data-correct="true">사람이 원문과 대조하지 않은 것이 ‘확정’으로 둔갑해 신뢰를 깎는다</button>
+          <button class="quiz-opt" data-correct="false">인쇄 속도가 느려진다</button>
+          <button class="quiz-opt" data-correct="false">검색 정확도가 떨어진다</button>
+        </div>
+        <div class="quiz-why" hidden><p><strong>2.10.</strong> 상태는 데이터의 신뢰도를 나타내는 약속입니다. 자동화는 <span class="path">draft → review</span>까지만, 승격은 가드로 막아 두세요.</p></div>
+      </div>
+
+      <div class="quiz">
+        <p class="quiz-q"><span class="qnum">Q4</span>비전 모델로 표를 읽힐 때 <span class="path">&lt;rows&gt;</span>·<span class="path">&lt;cols&gt;</span>를 함께 받는 이유는?</p>
+        <div class="quiz-opts">
+          <button class="quiz-opt" data-correct="false">출력 토큰을 늘리기 위해</button>
+          <button class="quiz-opt" data-correct="false">사람이 읽기 쉽게 하려고</button>
+          <button class="quiz-opt" data-correct="true">모델의 자기 선언과 실제 마크다운을 대조해 누락을 잡을 수 있기 때문</button>
+          <button class="quiz-opt" data-correct="false">이미지 회전을 보정하려고</button>
+        </div>
+        <div class="quiz-why" hidden><p><strong>2.7.</strong> 모델이 “4행 3열”이라 선언했는데 결과가 5행이면 표를 믿지 않고 다시 시도할 수 있습니다. 자기 선언을 검증 장치로 쓰는 패턴은 채점에서도 다시 나옵니다.</p></div>
+      </div>
+
+      <h3>실습 과제</h3>
+      <ol>
+        <li><strong>내 PDF 3개로 판별기 돌리기.</strong> <span class="path">profile_pdf()</span>로 텍스트/스캔/mixed를 분류해 보고,
+          결과가 직관과 맞는지 확인하세요. 틀렸다면 임계값이 아니라 <em>그 PDF의 성질</em>을 먼저 보세요.</li>
+        <li><strong>표 하나를 두 벌로.</strong> 같은 표를 <span class="path">fill</span>과 <span class="path">merge</span>로 각각 만들어 보고,
+          검색용·조판용으로 어느 쪽이 맞는지 직접 비교하세요.</li>
+        <li><strong>린트를 기존 문항에 돌리기.</strong> 검수를 통과한 문항 20개에 <span class="path">lint_item()</span>을 돌려
+          오탐이 몇 개인지 세어 보세요. 오탐이 많은데 룰을 안 고치면, 팀은 린트를 끕니다.</li>
+      </ol>
+
+    </article>
+
+    <nav class="pager" aria-label="페이지 이동">
+      <a class="prev" href="module-1.html">
+        <span class="dir">← 이전</span>
+        <span class="ttl">모듈 1 · 프롬프트 설계 정석</span>
+      </a>
+      <a class="next" href="module-3.html">
+        <span class="dir">다음 →</span>
+        <span class="ttl">모듈 3 · 8,000문항 RAG</span>
+      </a>
+    </nav>
+
+    <footer class="doc-footer">
+      <span>모듈 2 · 교육과정·기출 문서 전처리 &amp; 비전</span>
+      <span><a href="index.html">코스 홈</a> · <a href="module-1.html">모듈 1</a> · <a href="module-3.html">모듈 3</a></span>
+    </footer>
+  </main>
+</div>
+
+<script src="assets/app.js"></script>
+</body>
+</html>

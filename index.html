@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ko" data-page="home">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 강의노트 · 모몽가님 맞춤판</title>
+<meta name="description" content="임용 1차 커리큘럼·기출 8천 문항을 다루는 AI 파이프라인을 처음부터 끝까지 — 프롬프트 설계, 문서 전처리, RAG, 자동 채점. 모몽가님의 imgo-node · imgo-qbank 스택에 맞춘 실전 강의노트.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem('ai-notes:theme');if(!t){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">본문으로</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menuBtn" aria-label="목차 열기" aria-expanded="false">☰</button>
+  <a class="brand" href="index.html">
+    <span class="brand-mark">AI</span>
+    <span>AI 강의노트<small>모몽가님 맞춤판</small></span>
+  </a>
+  <nav class="crumbs" aria-label="현재 위치">코스 홈</nav>
+  <div class="topbar-right">
+    <span class="progress-chip" data-progress-chip>0%</span>
+    <button class="icon-btn" id="themeBtn" aria-label="테마 전환">🌙</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="강의 목차">
+    <nav class="nav">
+      <a class="nav-item active" href="index.html"><span class="nav-num">⌂</span>코스 홈</a>
+      <p class="nav-label">모듈</p>
+      <div class="nav-group">
+        <a class="nav-item" href="module-1.html"><span class="nav-num">1</span>프롬프트 설계 정석</a>
+        <div class="nav-sub"></div>
+      </div>
+      <div class="nav-group">
+        <a class="nav-item" href="module-2.html"><span class="nav-num">2</span>문서 전처리 &amp; 비전</a>
+        <div class="nav-sub"></div>
+      </div>
+      <div class="nav-group">
+        <a class="nav-item" href="module-3.html"><span class="nav-num">3</span>8,000문항 RAG</a>
+        <div class="nav-sub"></div>
+      </div>
+      <div class="nav-group">
+        <a class="nav-item" href="module-4.html"><span class="nav-num">4</span>Eval &amp; 자동 채점</a>
+        <div class="nav-sub"></div>
+      </div>
+      <div class="nav-group">
+        <a class="nav-item" href="appendix.html"><span class="nav-num">+</span>부록 · 레포 로드맵</a>
+        <div class="nav-sub"></div>
+      </div>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="progress-label"><span>이 페이지 진도</span><span data-progress-text>0 / 0</span></div>
+      <div class="progress-track"><div class="progress-fill" data-progress-fill></div></div>
+      <button class="reset-link" data-reset-progress type="button">이 페이지 진도 초기화</button>
+    </div>
+  </aside>
+  <div class="backdrop" id="backdrop" hidden></div>
+
+  <main class="main" id="main">
+    <article class="doc">
+
+      <div class="hero">
+        <span class="eyebrow">2027 초등임용 · imgo-node / imgo-qbank</span>
+        <h1>내 자료로 돌아가는 AI 파이프라인,<br>네 단계로 끝내기</h1>
+        <p class="lede">
+          프롬프트를 “잘 쓰는 법”이 아니라 <strong>파이프라인으로 만드는 법</strong>을 다룹니다.
+          교육과정·기출 마크다운을 <span class="path">imgo-node</span>에 쌓고, 8천 문항을 검색하고,
+          변형문제와 채점을 자동화하는 전 과정을 코드와 함께 봅니다.
+        </p>
+        <div class="stat-row">
+          <div class="stat"><b>4 + 1</b><span>모듈 · 부록</span></div>
+          <div class="stat"><b>62</b><span>레슨</span></div>
+          <div class="stat"><b>약 6~8h</b><span>정독 기준</span></div>
+          <div class="stat"><b>Colab</b><span>무료 GPU 전제</span></div>
+        </div>
+      </div>
+
+      <div class="callout imgo">
+        <span class="callout-title">이 노트는 링크 모음이 아닙니다</span>
+        <p>
+          결론·원리·코드·실습이 각 모듈 안에 다 들어 있습니다. 읽는 것만으로 개념이 잡히도록 썼고,
+          링크는 “더 깊이 볼 때”의 참고로만 뒤에 붙였습니다. 인터넷 없이도 1장부터 4장까지 이어서 읽을 수 있습니다.
+        </p>
+      </div>
+
+      <h2 id="outcomes">읽고 나면 손에 남는 것</h2>
+      <div class="grid three">
+        <div class="card">
+          <span class="card-tag">모듈 1</span>
+          <h4>흔들리지 않는 프롬프트</h4>
+          <p>같은 입력에 같은 형식으로 답하는 프롬프트. 태그·출력 고정·환각 억제를 규칙으로 만듭니다.</p>
+        </div>
+        <div class="card">
+          <span class="card-tag">모듈 2</span>
+          <h4>PDF → md 자동화</h4>
+          <p>기출 PDF·스캔본·표·도식을 <span class="path">imgo-node</span> 스키마의 마크다운으로 바꾸는 코드.</p>
+        </div>
+        <div class="card">
+          <span class="card-tag">모듈 3</span>
+          <h4>8천 문항 검색기</h4>
+          <p>청킹부터 하이브리드 검색·리랭킹까지, 코랩에서 그대로 돌아가는 RAG 한 벌.</p>
+        </div>
+      </div>
+      <p>
+        그리고 모듈 4에서 <strong>“이게 좋아졌는지 어떻게 아는가”</strong>를 붙입니다. 평가(eval)와 자동 채점이 없으면
+        앞의 세 모듈은 감으로 돌아가는 장난감에 머뭅니다. 네 모듈은 서로 떼어 쓸 수 있지만,
+        붙여 놓았을 때 비로소 <em>돌아가는 시스템</em>이 됩니다.
+      </p>
+
+      <h2 id="modules">모듈 한눈에 보기</h2>
+
+      <a class="card" href="module-1.html" data-lessons="m1-01,m1-02,m1-03,m1-04,m1-05,m1-06,m1-07,m1-08,m1-09,m1-10,m1-11,m1-12,m1-13,m1-14" style="margin-bottom:12px">
+        <span class="card-tag">모듈 1 · 기초</span>
+        <h4>클로드 프롬프트 설계 정석 <span data-mod-progress style="font-size:12px;color:var(--text-faint);font-weight:600"></span></h4>
+        <p>system·user·prefill 3층 구조, XML 태그, 출력 형식 고정, 환각 억제, few-shot, 그리고 변형문제 생성·채점 프롬프트 실전 예시까지. 프롬프트를 “요청”이 아니라 “계약”으로 쓰는 법.</p>
+        <div class="card-meta">14레슨 · 약 90분</div>
+      </a>
+
+      <a class="card" href="module-2.html" data-lessons="m2-01,m2-02,m2-03,m2-04,m2-05,m2-06,m2-07,m2-08,m2-09,m2-10,m2-11,m2-12,m2-13" style="margin-bottom:12px">
+        <span class="card-tag">모듈 2 · 데이터</span>
+        <h4>교육과정·기출 문서 전처리 &amp; 비전 <span data-mod-progress style="font-size:12px;color:var(--text-faint);font-weight:600"></span></h4>
+        <p>텍스트 PDF와 스캔본 판별, 표·병합 셀 정규화, OCR 후처리, 도식 판독, HWPX, frontmatter 설계와 검수 상태 기계, 자동 린트까지. 성능의 8할이 여기서 갈립니다.</p>
+        <div class="card-meta">13레슨 · 약 100분</div>
+      </a>
+
+      <a class="card" href="module-3.html" data-lessons="m3-01,m3-02,m3-03,m3-04,m3-05,m3-06,m3-07,m3-08,m3-09,m3-10,m3-11,m3-12,m3-13,m3-14,m3-15,m3-16" style="margin-bottom:12px">
+        <span class="card-tag">모듈 3 · 검색</span>
+        <h4>8,000문항 RAG 파이프라인 <span data-mod-progress style="font-size:12px;color:var(--text-faint);font-weight:600"></span></h4>
+        <p>문항 단위 청킹, bge-m3 임베딩, faiss 인덱스, Kiwi+BM25 하이브리드, RRF, cross-encoder 리랭킹, YAML 메타데이터 필터, 요약 인덱싱, 그리고 코랩 전체 노트북.</p>
+        <div class="card-meta">16레슨 · 약 150분</div>
+      </a>
+
+      <a class="card" href="module-4.html" data-lessons="m4-01,m4-02,m4-03,m4-04,m4-05,m4-06,m4-07,m4-08,m4-09,m4-10,m4-11,m4-12,m4-13" style="margin-bottom:12px">
+        <span class="card-tag">모듈 4 · 신뢰</span>
+        <h4>프롬프트 평가(Eval)와 자동 채점 <span data-mod-progress style="font-size:12px;color:var(--text-faint);font-weight:600"></span></h4>
+        <p>골든셋 만들기, LLM-as-judge 설계 7원칙, 서술형 루브릭 채점, 사람 채점과의 카파 일치도, 회귀 테스트, Batch API로 8천 건 채점하기.</p>
+        <div class="card-meta">13레슨 · 약 100분</div>
+      </a>
+
+      <a class="card" href="appendix.html" data-lessons="a-01,a-02,a-03,a-04,a-05,a-06">
+        <span class="card-tag">부록</span>
+        <h4>바로 따라 하는 코랩 · 레포 로드맵 <span data-mod-progress style="font-size:12px;color:var(--text-faint);font-weight:600"></span></h4>
+        <p>레포 4개의 실제 경로와 학습 순서, 코랩 세팅, <span class="path">imgo-node</span> 연동 체크리스트, 복붙 스니펫 모음.</p>
+        <div class="card-meta">6레슨 · 약 30분</div>
+      </a>
+
+      <h2 id="setup">시작하기 전 30분 세팅</h2>
+      <ol class="steps">
+        <li>
+          <strong>API 키 두 개를 준비합니다.</strong> 생성용(Anthropic) 하나, 임베딩은 <em>코랩 GPU에서 무료로</em> 돌리므로
+          별도 결제가 필요 없습니다. 임베딩을 API로 돌릴 때만 Voyage나 OpenAI 키를 추가합니다.
+        </li>
+        <li>
+          <strong>코랩 런타임을 GPU로 바꿉니다.</strong> <span class="path">런타임 → 런타임 유형 변경 → T4 GPU</span>.
+          무료 등급은 하루 사용 시간 제한이 있으니, 임베딩은 한 번 만들어 <span class="path">.npy</span>로 저장해 두고 재사용합니다(모듈 3).
+        </li>
+        <li>
+          <strong>키는 코드에 쓰지 않습니다.</strong> 코랩 왼쪽 🔑 <em>Secrets</em>에 <span class="path">ANTHROPIC_API_KEY</span>를 넣고
+          <span class="path">userdata.get()</span>으로 읽습니다. 노트북을 공유해도 키가 새지 않습니다.
+        </li>
+        <li>
+          <strong>작업 폴더를 정합니다.</strong> 이 노트는 <span class="path">imgo-node/content/문제/1차</span>와
+          <span class="path">imgo-node/content/&lt;과목&gt;</span> 구조를 그대로 전제합니다. 드라이브에 저장소를 두면 코랩에서 바로 마운트할 수 있습니다.
+        </li>
+      </ol>
+
+      <div class="callout warn">
+        <span class="callout-title">모델 이름은 코드에 박지 마세요</span>
+        <p>
+          예제 코드는 <span class="path">MODEL = "claude-sonnet-5-5"</span>처럼 변수로 뺐습니다. 모델 ID는 세대마다 바뀌므로,
+          실제로 돌릴 때는 콘솔의 Models 페이지에서 현재 ID를 확인해 환경변수(<span class="path">CLAUDE_MODEL</span>)로 넣는 편이 안전합니다.
+          이 노트의 코드는 <strong>ID가 아니라 구조</strong>를 외우게 하려고 그렇게 썼습니다.
+        </p>
+      </div>
+
+      <h2 id="principles">이 코스를 읽는 다섯 가지 원칙</h2>
+      <ol>
+        <li><strong>한 번에 하나만 바꿉니다.</strong> 청킹과 프롬프트를 동시에 고치면 무엇이 효과였는지 영원히 모릅니다.</li>
+        <li><strong>측정 없는 개선은 취향입니다.</strong> “느낌상 좋아졌다”는 모듈 4의 20문항 골든셋으로 대체합니다.</li>
+        <li><strong>원문을 믿고, 모델을 의심합니다.</strong> 생성 결과는 반드시 원문 근거(성취기준·해설)로 되짚습니다.</li>
+        <li><strong>사람이 마지막에 봅니다.</strong> 자동화는 후보를 좁히는 일까지. <span class="path">needs_manual_verification</span> 플래그를 지우는 건 사람입니다.</li>
+        <li><strong>작은 표본으로 먼저.</strong> 8천 문항 전체에 돌리기 전에 20문항으로 실패를 다 만나 둡니다.</li>
+      </ol>
+
+      <h2 id="paths">어디서부터 읽을까</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>지금 상황</th><th>이 순서로</th><th>이유</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>AI 코딩이 처음</td><td>1 → 2 → 3 → 4</td><td>순서대로 쌓이게 설계했습니다. 건너뛰면 3장에서 막힙니다.</td></tr>
+            <tr><td>프롬프트는 써 봤다</td><td>1장 훑고 → 3 → 4 → 2</td><td>RAG·채점이 목적이라면 전처리는 그다음에 손보는 편이 효율적입니다.</td></tr>
+            <tr><td>스캔 PDF가 산더미</td><td>2 → 3 → 4 → 1</td><td>데이터가 없으면 검색도 없습니다. 2장을 먼저.</td></tr>
+            <tr><td>채점 자동화만 급함</td><td>1 → 4</td><td>4장은 1장의 출력 고정·환각 억제를 전제로 씁니다.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout tip">
+        <span class="callout-title">진도는 자동으로 저장됩니다</span>
+        <p>
+          각 절 제목 오른쪽의 <em>학습 완료로 표시</em>를 누르면 이 브라우저에 저장됩니다(서버 전송 없음).
+          왼쪽 목차와 위쪽 % 표시가 같이 움직이고, 홈의 모듈 카드에도 반영됩니다.
+          기기를 바꾸면 진도는 따라오지 않습니다 — 브라우저 저장소에만 남기 때문입니다.
+        </p>
+      </div>
+
+    </article>
+
+    <nav class="pager" aria-label="페이지 이동">
+      <span></span>
+      <a class="next" href="module-1.html">
+        <span class="dir">다음 →</span>
+        <span class="ttl">모듈 1 · 클로드 프롬프트 설계 정석</span>
+      </a>
+    </nav>
+
+    <footer class="doc-footer">
+      <span>AI 강의노트 · 모몽가님 맞춤판</span>
+      <span>근거: anthropics/claude-cookbooks · prompt-eng-interactive-tutorial · courses · Shubhamsaboo/awesome-llm-apps</span>
+    </footer>
+  </main>
+</div>
+
+<script src="assets/app.js"></script>
+<script>
+/* 홈 전용: 모듈 카드에 페이지별 진도 표시 (app.js의 저장 키를 그대로 읽는다) */
+(function () {
+  var KEY = "ai-notes:done:v1";
+  var done = {};
+  try { done = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { done = {}; }
+  var cards = document.querySelectorAll("[data-lessons]");
+  var pageOf = { "m1": "module-1", "m2": "module-2", "m3": "module-3", "m4": "module-4", "a": "appendix" };
+  for (var i = 0; i < cards.length; i++) {
+    var ids = (cards[i].getAttribute("data-lessons") || "").split(",").filter(Boolean);
+    var page = pageOf[ids[0] ? ids[0].split("-")[0] : ""] || "";
+    var n = 0;
+    for (var j = 0; j < ids.length; j++) if (done[page + "#" + ids[j]] === 1) n++;
+    var slot = cards[i].querySelector("[data-mod-progress]");
+    if (slot) slot.textContent = n ? "· " + Math.round(n / ids.length * 100) + "% 완료" : "";
+  }
+})();
+</script>
+</body>
+</html>

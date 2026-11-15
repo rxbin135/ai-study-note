@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ko" data-page="appendix">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>부록 · 코랩 / 레포 로드맵 — AI 강의노트</title>
+<meta name="description" content="claude-cookbooks · prompt-eng-interactive-tutorial · courses · awesome-llm-apps의 실제 경로와 학습 순서, 코랩 세팅, imgo-node 연동 체크리스트, 복붙 스니펫.">
+<link rel="stylesheet" href="assets/style.css">
+<script>try{var t=localStorage.getItem('ai-notes:theme');if(!t){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">본문으로</a>
+
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menuBtn" aria-label="목차 열기" aria-expanded="false">☰</button>
+  <a class="brand" href="index.html">
+    <span class="brand-mark">AI</span>
+    <span>AI 강의노트<small>모몽가님 맞춤판</small></span>
+  </a>
+  <nav class="crumbs" aria-label="현재 위치"><a href="index.html" style="color:inherit;text-decoration:none">코스 홈</a> / <strong>부록</strong></nav>
+  <div class="topbar-right">
+    <span class="progress-chip" data-progress-chip>0%</span>
+    <button class="icon-btn" id="themeBtn" aria-label="테마 전환">🌙</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar" aria-label="강의 목차">
+    <nav class="nav">
+      <a class="nav-item" href="index.html"><span class="nav-num">⌂</span>코스 홈</a>
+      <p class="nav-label">모듈</p>
+      <div class="nav-group">
+        <a class="nav-item" href="module-1.html"><span class="nav-num">1</span>프롬프트 설계 정석</a>
+        <div class="nav-sub"></div>
+      </div>
+      <div class="nav-group">
+        <a class="nav-item" href="module-2.html"><span class="nav-num">2</span>문서 전처리 &amp; 비전</a>
+        <div class="nav-sub"></div>
+      </div>
+      <div class="nav-group">
+        <a class="nav-item" href="module-3.html"><span class="nav-num">3</span>8,000문항 RAG</a>
+        <div class="nav-sub"></div>
+      </div>
+      <div class="nav-group">
+        <a class="nav-item" href="module-4.html"><span class="nav-num">4</span>Eval &amp; 자동 채점</a>
+        <div class="nav-sub"></div>
+      </div>
+      <div class="nav-group">
+        <a class="nav-item active" href="appendix.html"><span class="nav-num">+</span>부록 · 레포 로드맵</a>
+        <div class="nav-sub"></div>
+      </div>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="progress-label"><span>이 페이지 진도</span><span data-progress-text>0 / 0</span></div>
+      <div class="progress-track"><div class="progress-fill" data-progress-fill></div></div>
+      <button class="reset-link" data-reset-progress type="button">이 페이지 진도 초기화</button>
+    </div>
+  </aside>
+  <div class="backdrop" id="backdrop" hidden></div>
+
+  <main class="main" id="main">
+    <article class="doc">
+
+      <div class="doc-hero">
+        <span class="eyebrow">부록</span>
+        <h1>바로 따라 하는 코랩 · 레포 로드맵</h1>
+        <p class="lede">
+          본문에서 개념을 다 잡았다면, 여기서는 <strong>어디를 어떤 순서로</strong> 볼지와
+          <strong>바로 붙여 쓸 코드</strong>만 모았습니다.
+        </p>
+        <div class="meta-row">
+          <span class="meta-pill">6레슨</span>
+          <span class="meta-pill">약 30분</span>
+          <span class="meta-pill">링크 확인 기준: 2026-11</span>
+        </div>
+      </div>
+
+      <h2 id="a-01">A.1 레포 4개 지도</h2>
+
+      <p>
+        본문에서 참조한 네 개의 저장소입니다. 각각 <strong>무엇을 얻을지</strong>가 다르므로, 목적 없이 폴더를 다 열어 보면
+        오히려 시간이 사라집니다. 아래 표의 “가져올 것”만 가져오세요.
+      </p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>레포</th><th>가져올 것</th><th>볼 경로</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><a href="https://github.com/anthropics/prompt-eng-interactive-tutorial" target="_blank" rel="noopener">anthropics/prompt-eng-interactive-tutorial</a></td>
+              <td>프롬프트의 기본기 9장. 특히 4장(데이터/지시 분리), 5장(출력 형식·prefill), 8장(환각 억제), 9장(복합 프롬프트 조립)</td>
+              <td><a href="https://github.com/anthropics/prompt-eng-interactive-tutorial/tree/master/Anthropic%201P" target="_blank" rel="noopener">Anthropic 1P</a> 폴더의 <span class="path">01</span>~<span class="path">10</span> 노트북</td>
+            </tr>
+            <tr>
+              <td><a href="https://github.com/anthropics/courses" target="_blank" rel="noopener">anthropics/courses</a></td>
+              <td>API 사용법(<span class="path">anthropic_api_fundamentals</span>), 도구 호출·구조화 출력(<span class="path">tool_use</span>), 평가(<span class="path">prompt_evaluations</span>)</td>
+              <td><a href="https://github.com/anthropics/courses/tree/master/anthropic_api_fundamentals" target="_blank" rel="noopener">anthropic_api_fundamentals</a> · <a href="https://github.com/anthropics/courses/tree/master/tool_use" target="_blank" rel="noopener">tool_use</a> · <a href="https://github.com/anthropics/courses/tree/master/prompt_evaluations" target="_blank" rel="noopener">prompt_evaluations</a></td>
+            </tr>
+            <tr>
+              <td><a href="https://github.com/anthropics/claude-cookbooks" target="_blank" rel="noopener">anthropics/claude-cookbooks</a></td>
+              <td>RAG 3단계(기본→요약 인덱싱→리랭킹)와 평가 지표 구현, 비전(표·차트), 프롬프트 캐싱, eval 빌딩</td>
+              <td><a href="https://github.com/anthropics/claude-cookbooks/tree/main/capabilities/retrieval_augmented_generation" target="_blank" rel="noopener">capabilities/retrieval_augmented_generation</a> · <a href="https://github.com/anthropics/claude-cookbooks/tree/main/multimodal" target="_blank" rel="noopener">multimodal</a> · <a href="https://github.com/anthropics/claude-cookbooks/tree/main/misc" target="_blank" rel="noopener">misc</a></td>
+            </tr>
+            <tr>
+              <td><a href="https://github.com/Shubhamsaboo/awesome-llm-apps" target="_blank" rel="noopener">Shubhamsaboo/awesome-llm-apps</a></td>
+              <td>RAG 구조 비교(하이브리드·교정 RAG·멀티모달), 실패 진단 패턴, 평가 붙인 예제</td>
+              <td><a href="https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/rag_tutorials" target="_blank" rel="noopener">rag_tutorials</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>폴더별 한 줄 설명</h3>
+      <dl class="kv">
+        <dt>해당 폴더 → 얻는 것</dt>
+        <dd>아래는 위 표를 더 잘게 쪼갠 것입니다. 클릭하면 바로 열립니다.</dd>
+      </dl>
+
+      <div class="grid two">
+        <a class="card" href="https://github.com/anthropics/claude-cookbooks/blob/main/misc/building_evals.ipynb" target="_blank" rel="noopener">
+          <span class="card-tag">모듈 4</span>
+          <h4>misc / building_evals.ipynb</h4>
+          <p>코드·사람·모델 채점을 한 파일에서 비교합니다. grader prompt의 원형이 여기 있습니다.</p>
+        </a>
+        <a class="card" href="https://github.com/anthropics/claude-cookbooks/blob/main/misc/prompt_caching.ipynb" target="_blank" rel="noopener">
+          <span class="card-tag">모듈 1</span>
+          <h4>misc / prompt_caching.ipynb</h4>
+          <p>cache_control 위치와 usage 확인법. 1.12의 원본입니다.</p>
+        </a>
+        <a class="card" href="https://github.com/anthropics/claude-cookbooks/tree/main/capabilities/retrieval_augmented_generation/evaluation" target="_blank" rel="noopener">
+          <span class="card-tag">모듈 3</span>
+          <h4>RAG / evaluation</h4>
+          <p>promptfoo 설정 예시와 평가 데이터셋. 회귀 테스트를 도구로 옮길 때 참고.</p>
+        </a>
+        <a class="card" href="https://github.com/anthropics/claude-cookbooks/tree/main/capabilities/contextual-embeddings" target="_blank" rel="noopener">
+          <span class="card-tag">모듈 3</span>
+          <h4>capabilities / contextual-embeddings</h4>
+          <p>청크에 맥락을 붙여 임베딩하는 기법. 3.3의 “맥락 헤더”를 더 밀어붙인 버전.</p>
+        </a>
+        <a class="card" href="https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/rag_tutorials/hybrid_search_rag" target="_blank" rel="noopener">
+          <span class="card-tag">모듈 3</span>
+          <h4>hybrid_search_rag</h4>
+          <p>시맨틱 + 키워드 + 리랭킹을 한 앱으로 묶은 예제. 3.7~3.9의 완성형 참고.</p>
+        </a>
+        <a class="card" href="https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/rag_tutorials/rag_failure_diagnostics_clinic" target="_blank" rel="noopener">
+          <span class="card-tag">모듈 3</span>
+          <h4>rag_failure_diagnostics_clinic</h4>
+          <p>RAG 실패를 유형으로 분류하는 패턴. 3.15 진단표를 자동화할 때 씨앗.</p>
+        </a>
+      </div>
+
+      <div class="callout tip">
+        <span class="callout-title">레포는 “읽는 것”보다 “돌려 보는 것”</span>
+        <p>
+          노트북은 GitHub에서 읽으면 출력이 안 보입니다. 코랩에서 열어(<span class="path">Open in Colab</span>) 실행해 보세요.
+          특히 <span class="path">building_evals.ipynb</span>와 RAG 가이드는 <em>값을 바꿔 가며</em> 돌릴 때 이해가 됩니다.
+          단, 노트북이 참조하는 데이터 파일은 저장소를 통째로 받아야 있습니다.
+        </p>
+      </div>
+
+      <h2 id="a-02">A.2 4주 학습 플랜</h2>
+
+      <p>하루 40~60분 기준입니다. 각 주가 끝날 때 <strong>손에 남는 산출물</strong>이 있게 짰습니다.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>주</th><th>읽을 것</th><th>만들 것(산출물)</th><th>확인 방법</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>1주</strong></td>
+              <td>모듈 1 전체 + <span class="path">prompt-eng</span> 4·5·8장</td>
+              <td>문항 1개용 “요구 조건 추출” 프롬프트 + <span class="path">call_json()</span></td>
+              <td>3회 실행해 같은 결과가 나오는가</td>
+            </tr>
+            <tr>
+              <td><strong>2주</strong></td>
+              <td>모듈 2 전체</td>
+              <td>PDF 3개 → md 변환 + <span class="path">report.json</span></td>
+              <td>품질 점수와 린트 결과를 눈으로 확인</td>
+            </tr>
+            <tr>
+              <td><strong>3주</strong></td>
+              <td>모듈 3의 3.1~3.10</td>
+              <td>청크 → 임베딩 → 하이브리드 검색까지</td>
+              <td>질문 10개로 상위 3개를 직접 읽어 보기</td>
+            </tr>
+            <tr>
+              <td><strong>4주</strong></td>
+              <td>모듈 3의 3.11~3.15 + 모듈 4</td>
+              <td>평가셋 20건 + <span class="path">run_eval()</span> 기록</td>
+              <td>리랭킹 전후 recall 비교표</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        시간이 하루 20분뿐이라면 <strong>1주와 4주만</strong> 하세요. 프롬프트와 평가가 나머지를 잡아 줍니다.
+        반대로 “일단 검색부터” 하고 싶다면 3주를 먼저 해도 됩니다 — 다만 2주를 건너뛰면 검색이 안 되는 이유를
+        찾는 데 더 오래 걸립니다.
+      </p>
+
+      <h2 id="a-03">A.3 코랩 환경 세팅</h2>
+
+      <ol class="steps">
+        <li>
+          <strong>GPU 켜기.</strong> <span class="path">런타임 → 런타임 유형 변경 → T4 GPU</span>. 바꾼 뒤에는 세션이 다시 시작됩니다.
+        </li>
+        <li>
+          <strong>키는 Secrets에.</strong> 왼쪽 🔑 아이콘 → <span class="path">ANTHROPIC_API_KEY</span> 추가 → 노트북 액세스 허용.
+        </li>
+        <li>
+          <strong>드라이브 마운트.</strong> 저장소와 인덱스를 드라이브에 두면 세션이 끊겨도 살아남습니다.
+        </li>
+        <li>
+          <strong>한글 폰트(선택).</strong> 그래프에 한글 라벨을 쓰려면 나눔폰트를 설치합니다.
+        </li>
+      </ol>
+
+<pre data-lang="python"><code># 한 번에 세팅
+!pip install -q anthropic sentence-transformers rank_bm25 kiwipiepy pyyaml
+
+import os
+from google.colab import userdata, drive
+
+os.environ["ANTHROPIC_API_KEY"] = userdata.get("ANTHROPIC_API_KEY")
+drive.mount("/content/drive")
+
+# (선택) 그래프 한글 폰트
+!apt-get -qq install -y fonts-nanum &gt; /dev/null
+import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
+fm.fontManager.addfont("/usr/share/fonts/truetype/nanum/NanumGothic.ttf")
+plt.rcParams["font.family"] = "NanumGothic"
+plt.rcParams["axes.unicode_minus"] = False</code></pre>
+
+      <div class="callout warn">
+        <span class="callout-title">무료 등급의 현실</span>
+        <ul style="margin-bottom:0">
+          <li>세션은 <strong>일정 시간 미사용 시 종료</strong>됩니다. 오래 걸리는 임베딩은 청크를 나눠 저장하세요.</li>
+          <li>GPU 할당이 안 되는 시간대가 있습니다. 그때는 CPU로도 청크·검색 작업은 됩니다(임베딩만 느려짐).</li>
+          <li>노트북을 공유 링크로 배포하면 <em>출력에 데이터가 남습니다</em>. 문항 원문이 들어간 출력은 지우고 공유하세요.</li>
+        </ul>
+      </div>
+
+      <h2 id="a-04">A.4 imgo-node 연동 체크리스트</h2>
+
+      <p>파이프라인을 실제 저장소에 붙이기 전에 확인할 것들입니다. 하나라도 빠지면 나중에 조용히 어긋납니다.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>확인</th><th>왜</th><th>빠졌을 때 증상</th></tr></thead>
+          <tbody>
+            <tr><td>절 제목이 표준인가 (<span class="path">## 문제 본문</span> / <span class="path">## ✅ 정답</span> / <span class="path">## 📝 해설</span>)</td><td>qbank 파서가 이 이름으로 자릅니다</td><td>인쇄에 본문이 안 나옴</td></tr>
+            <tr><td><span class="path">node_kind</span>가 계열과 맞는가</td><td>기출과 연습모의가 다르게 처리됩니다</td><td>필터·검색에서 문서가 사라짐</td></tr>
+            <tr><td>이미지가 <span class="path">images/</span> 상대경로인가</td><td>md 기준 상대경로로 연결됩니다</td><td>그림 대신 안내 문구가 인쇄됨</td></tr>
+            <tr><td><span class="path">id</span>가 유일한가</td><td>중복되면 덮어쓰기·검색 혼선</td><td>같은 문항이 두 번 나옴</td></tr>
+            <tr><td>검수 플래그가 정확한가</td><td>인쇄 가능 여부를 결정합니다</td><td>미검수 문항이 시험지에 섞임</td></tr>
+            <tr><td>YAML 타입이 기존과 같은가</td><td>앱이 문자열/불리언을 구분해 읽습니다</td><td>배지가 “미확인”으로 뜸</td></tr>
+            <tr><td>파일명 규칙(<span class="path">과목_연도_번호.md</span>)</td><td>정렬·중복 검사·매핑에 쓰입니다</td><td>목록 정렬이 뒤죽박죽</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout danger">
+        <span class="callout-title">외부 API로 보내기 전에 한 번 더</span>
+        <p>
+          문항 원문·모의고사 지문은 <strong>내부 자료</strong>입니다. 어떤 자료는 출제 기관·출판사의 저작물이고,
+          어떤 자료는 “외부 공유 금지” 약속이 붙어 있습니다. 노트북에서 API를 호출하면 그 텍스트가 외부로 전송됩니다.
+          <strong>무엇을 보내도 되는지 먼저 정하고</strong>, 민감한 자료는 전송 전에 마스킹하거나 로컬 모델로 처리하세요.
+          기술적으로 쉬운 일과 해도 되는 일은 다릅니다. 이 노트의 코드는 “돌아가는 방법”이지 “보내도 된다”는 허가가 아닙니다.
+        </p>
+      </div>
+
+      <h2 id="a-05">A.5 자주 쓰는 스니펫</h2>
+
+      <p>본문에서 만든 함수들을 한 곳에 모았습니다. 새 노트북을 열 때 이 블록부터 붙이면 됩니다.</p>
+
+<pre data-lang="python"><code># ===== 0. 공통 =====
+import os, re, json
+from pathlib import Path
+import anthropic
+
+client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5-5")
+
+def get_text(resp) -&gt; str:
+    return "".join(b.text for b in resp.content if b.type == "text")
+
+def extract_tag(text: str, tag: str):
+    m = re.search(rf"&lt;{tag}&gt;(.*?)&lt;/{tag}&gt;", text, re.S)
+    return m.group(1).strip() if m else None
+
+
+# ===== 1. 프롬프트 =====
+def call_json(user_prompt: str, *, retries: int = 1) -&gt; dict:
+    messages = [{"role": "user", "content": user_prompt},
+                {"role": "assistant", "content": "&lt;json&gt;{"}]
+    resp = client.messages.create(model=MODEL, max_tokens=2000, temperature=0,
+                                  messages=messages, stop_sequences=["&lt;/json&gt;"])
+    raw = "{" + get_text(resp)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        if retries &lt;= 0:
+            raise
+        fix = user_prompt + "\n\n&lt;correction&gt;유효한 JSON만 &lt;json&gt;{ … }&lt;/json&gt; 로 출력하시오.&lt;/correction&gt;"
+        return call_json(fix, retries=retries - 1)
+
+
+# ===== 2. 문서 =====
+def load_item(md_path: Path) -&gt; dict:
+    text = md_path.read_text(encoding="utf-8")
+    meta, body = {}, text
+    if text.startswith("---"):
+        parts = text.split("---", 2)
+        if len(parts) == 3:
+            _, fm, body = parts
+            for line in fm.splitlines():
+                if line and not line[0].isspace() and ":" in line:
+                    k, v = line.split(":", 1)
+                    meta[k.strip()] = v.strip().strip('"').strip("'")
+    return {"meta": meta, "body": body.strip(), "path": md_path.name}
+
+def section(body: str, *names: str) -&gt; str:
+    for name in names:
+        m = re.search(rf"^##\s+.*{re.escape(name)}.*$([\s\S]*?)(?=^##\s|\Z)", body, re.M)
+        if m:
+            return m.group(1).strip()
+    return ""
+
+
+# ===== 3. 검색 =====
+def embed_texts(texts, batch_size=16):
+    return model.encode(texts, batch_size=batch_size, normalize_embeddings=True,
+                        show_progress_bar=True, convert_to_numpy=True).astype("float32")
+
+def rrf_merge(result_lists, k=60, top_n=8):
+    fused = {}
+    for results in result_lists:
+        for rank, (idx, score, chunk) in enumerate(results, start=1):
+            slot = fused.setdefault(idx, {"idx": idx, "chunk": chunk, "rrf": 0.0})
+            slot["rrf"] += 1.0 / (k + rank)
+    return [(d["idx"], d["rrf"], d["chunk"]) for d in
+            sorted(fused.values(), key=lambda d: -d["rrf"])[:top_n]]
+
+
+# ===== 4. 채점 =====
+def parse_judge(raw: str) -&gt; dict:
+    met = re.findall(r'&lt;criterion id="(\w+)"&gt;\s*&lt;met&gt;(true|false|unknown)&lt;/met&gt;', raw)
+    if not met:
+        return {"ok": False}
+    return {"ok": True, "met": dict(met),
+            "rationale": (re.search(r"&lt;rationale&gt;(.*?)&lt;/rationale&gt;", raw, re.S) or [None, ""])[1].strip()}
+
+def score_of(parsed: dict, rubric: dict) -&gt; dict:
+    earned = sum(c["points"] for c in rubric["criteria"]
+                 if parsed["met"].get(c["id"]) == "true")
+    for p in rubric.get("penalties", []):
+        if parsed["met"].get(p["id"]) == "true":
+            earned += p["points"]
+    return {"score": max(rubric.get("floor", 0), min(rubric["total"], earned)), "max": rubric["total"]}</code></pre>
+
+      <h2 id="a-06">A.6 다음 단계</h2>
+
+      <p>네 모듈을 끝냈다면 다음에 손댈 곳은 대개 이 셋 중 하나입니다.</p>
+
+      <div class="grid three">
+        <div class="card">
+          <span class="card-tag">1순위</span>
+          <h4>검색을 UI에 붙이기</h4>
+          <p>지금은 노트북입니다. 검색 API를 작은 서버로 감싸 <span class="path">imgo-qbank</span> 옆에 두면 “이 문항과 비슷한 기출” 버튼이 생깁니다.</p>
+        </div>
+        <div class="card">
+          <span class="card-tag">2순위</span>
+          <h4>중복·품질 자동 기각</h4>
+          <p>생성 파이프라인 끝에 임베딩 유사도와 린트를 붙입니다. 사람은 남은 후보만 봅니다.</p>
+        </div>
+        <div class="card">
+          <span class="card-tag">3순위</span>
+          <h4>eval 대시보드</h4>
+          <p><span class="path">evals/results/*.json</span>을 표로 보여 주는 정적 페이지. 프롬프트 버전별 추이를 한눈에.</p>
+        </div>
+      </div>
+
+      <div class="callout imgo">
+        <span class="callout-title">💡 마지막으로, 이 노트를 쓰는 태도</span>
+        <p>
+          AI는 <strong>후보를 빨리 만들어 주는 도구</strong>이지, 확정을 대신하는 도구가 아닙니다.
+          문항 하나가 틀리면 학생의 시간이 날아가고, 채점이 틀리면 더 나쁩니다.
+          그래서 이 노트 전체에 같은 문장이 반복됩니다 — <em>형식을 고정하고, 근거를 인용하고, 숫자로 재고, 사람이 마지막에 본다.</em>
+          그 네 줄이면 충분합니다.
+        </p>
+      </div>
+
+    </article>
+
+    <nav class="pager" aria-label="페이지 이동">
+      <a class="prev" href="module-4.html">
+        <span class="dir">← 이전</span>
+        <span class="ttl">모듈 4 · Eval &amp; 자동 채점</span>
+      </a>
+      <a class="next" href="index.html">
+        <span class="dir">처음으로 →</span>
+        <span class="ttl">코스 홈</span>
+      </a>
+    </nav>
+
+    <footer class="doc-footer">
+      <span>부록 · 코랩 / 레포 로드맵</span>
+      <span><a href="index.html">코스 홈</a> · <a href="module-1.html">모듈 1</a> · <a href="module-4.html">모듈 4</a></span>
+    </footer>
+  </main>
+</div>
+
+<script src="assets/app.js"></script>
+</body>
+</html>
